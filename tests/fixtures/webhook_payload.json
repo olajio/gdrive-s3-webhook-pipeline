@@ -1,0 +1,27 @@
+{
+  "headers": {
+    "X-Goog-Channel-Id": "01234567-89ab-cdef-0123456789ab",
+    "X-Goog-Channel-Token": "your-webhook-token-here",
+    "X-Goog-Channel-Expiration": "Sat, 26 Jan 2026 12:00:00 GMT",
+    "X-Goog-Resource-Id": "abcdef123456",
+    "X-Goog-Resource-State": "update",
+    "X-Goog-Resource-URI": "https://www.googleapis.com/drive/v3/files/yourFileId?alt=json",
+    "X-Goog-Message-Number": "1",
+    "Content-Type": "application/json"
+  },
+  "body": null,
+  "httpMethod": "POST",
+  "path": "/webhook",
+  "queryStringParameters": null,
+  "isBase64Encoded": false,
+  "requestContext": {
+    "accountId": "123456789012",
+    "requestId": "test-request-id",
+    "stage": "dev",
+    "requestTime": "25/Jan/2026:12:00:00 +0000",
+    "requestTimeEpoch": 1737806400000,
+    "identity": {
+      "sourceIp": "172.217.0.0"
+    }
+  }
+}

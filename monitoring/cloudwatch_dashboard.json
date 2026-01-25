@@ -1,0 +1,105 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["GoogleDriveWebhook", "WebhooksReceived", {"stat": "Sum", "label": "Webhooks Received"}],
+          [".", "FilesUploaded", {"stat": "Sum", "label": "Files Uploaded"}],
+          [".", "FilesSkipped", {"stat": "Sum", "label": "Files Skipped"}],
+          [".", "DuplicateFilesSkipped", {"stat": "Sum", "label": "Duplicates"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "File Processing Metrics",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "min": 0
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["GoogleDriveWebhook", "GoogleDriveErrors", {"stat": "Sum"}],
+          [".", "AWSErrors", {"stat": "Sum"}],
+          [".", "S3UploadErrors", {"stat": "Sum"}],
+          [".", "LambdaErrors", {"stat": "Sum"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Error Metrics",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "min": 0
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Lambda", "Duration", {"stat": "Average"}, {"dimensions": {"FunctionName": "gdrive-webhook-webhook-handler-dev"}}],
+          ["...", {"stat": "p99"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Lambda Performance (ms)",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["GoogleDriveWebhook", "ChannelsCreated", {"stat": "Sum"}],
+          [".", "ChannelsRenewed", {"stat": "Sum"}],
+          [".", "ChannelRenewalErrors", {"stat": "Sum"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Channel Management",
+        "period": 3600
+      }
+    },
+    {
+      "type": "log",
+      "x": 0,
+      "y": 12,
+      "width": 24,
+      "height": 6,
+      "properties": {
+        "query": "SOURCE '/aws/lambda/gdrive-webhook-webhook-handler-dev'\n| fields @timestamp, @message\n| filter @message like /ERROR/ or @message like /WARN/\n| sort @timestamp desc\n| limit 20",
+        "region": "us-east-1",
+        "stacked": false,
+        "title": "Recent Errors and Warnings",
+        "view": "table"
+      }
+    }
+  ]
+}

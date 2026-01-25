@@ -1,0 +1,128 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt -t src/lambda/
+    
+    - name: Package Lambda functions
+      run: |
+        cd src/lambda
+        zip -r ../../lambda_package.zip . -x "*.pyc" -x "__pycache__/*"
+        cd ../..
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.6.0
+    
+    - name: Terraform Init
+      run: terraform -chdir=terraform init
+      env:
+        TF_VAR_environment: ${{ github.event.inputs.environment || 'dev' }}
+    
+    - name: Terraform Plan
+      run: terraform -chdir=terraform plan -out=tfplan
+      env:
+        TF_VAR_environment: ${{ github.event.inputs.environment || 'dev' }}
+        TF_VAR_s3_bucket_name: ${{ secrets.S3_BUCKET_NAME }}
+        TF_VAR_gdrive_folder_id: ${{ secrets.GDRIVE_FOLDER_ID }}
+        TF_VAR_alert_email: ${{ secrets.ALERT_EMAIL }}
+    
+    - name: Terraform Apply
+      if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      run: terraform -chdir=terraform apply tfplan
+    
+    - name: Get Lambda Function Names
+      id: lambda_names
+      run: |
+        echo "webhook_handler=$(terraform -chdir=terraform output -raw webhook_handler_function_name)" >> $GITHUB_OUTPUT
+        echo "channel_renewal=$(terraform -chdir=terraform output -raw channel_renewal_function_name)" >> $GITHUB_OUTPUT
+    
+    - name: Update Lambda Code - Webhook Handler
+      run: |
+        aws lambda update-function-code \
+          --function-name ${{ steps.lambda_names.outputs.webhook_handler }} \
+          --zip-file fileb://lambda_package.zip
+    
+    - name: Update Lambda Code - Channel Renewal
+      run: |
+        aws lambda update-function-code \
+          --function-name ${{ steps.lambda_names.outputs.channel_renewal }} \
+          --zip-file fileb://lambda_package.zip
+    
+    - name: Wait for Lambda Updates
+      run: |
+        aws lambda wait function-updated \
+          --function-name ${{ steps.lambda_names.outputs.webhook_handler }}
+        aws lambda wait function-updated \
+          --function-name ${{ steps.lambda_names.outputs.channel_renewal }}
+    
+    - name: Trigger Initial Channel Creation (First Deploy Only)
+      if: github.event.inputs.environment == 'dev' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      run: |
+        aws lambda invoke \
+          --function-name ${{ steps.lambda_names.outputs.channel_renewal }} \
+          --payload '{}' \
+          /tmp/response.json || true
+        cat /tmp/response.json || true
+      continue-on-error: true
+    
+    - name: Get Deployment Info
+      run: |
+        echo "### Deployment Complete! :rocket:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment:** ${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Webhook Endpoint:** $(terraform -chdir=terraform output -raw api_gateway_url)" >> $GITHUB_STEP_SUMMARY
+        echo "**S3 Bucket:** $(terraform -chdir=terraform output -raw s3_bucket_name)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Lambda Functions:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Webhook Handler: ${{ steps.lambda_names.outputs.webhook_handler }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Channel Renewal: ${{ steps.lambda_names.outputs.channel_renewal }}" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Post Deployment Tests
+      run: |
+        # Test webhook handler Lambda
+        aws lambda invoke \
+          --function-name ${{ steps.lambda_names.outputs.webhook_handler }} \
+          --payload '{"headers":{"X-Goog-Resource-State":"sync","X-Goog-Channel-Token":"test"}}' \
+          /tmp/webhook_test.json || true
+        
+        echo "Webhook handler response:"
+        cat /tmp/webhook_test.json || true
+      continue-on-error: true
