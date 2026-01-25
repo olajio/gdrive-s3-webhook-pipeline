@@ -17,15 +17,19 @@ This project provides a complete implementation guide for migrating data from Go
 ## 📁 Repository Structure
 
 ```
-data-pipeline/
-├── README.md                           # This file
-├── STRATEGY_RANKING.md                 # Comparison of 4 migration strategies
-├── WEBHOOK_IMPLEMENTATION.md           # Complete webhook implementation guide
-├── Google_Drive_to_S3_Migration_Plan.docx  # Word document version of strategy
-└── docs/
-    ├── architecture.md                 # System architecture details
-    ├── deployment.md                   # Step-by-step deployment guide
-    └── troubleshooting.md             # Common issues and solutions
+README.md                         # This file
+IMPLEMENTATION_GUIDE.md           # End-to-end deployment & operations playbook
+STRATEGY_RANKING.md               # Comparison of 4 migration strategies
+WEBHOOK_IMPLEMENTATION.md         # Webhook setup with code & IaC
+WEBHOOK_TECHNICAL_DOCUMENTATION.md# Deep technical reference (internal)
+WEBHOOK_ARCHITECTURE_PROPOSAL.md  # Customer/architect presentation
+PIPELINE_STRATEGY_NOTES.md        # Tree-of-thought strategy notes
+Google_Drive_to_S3_Migration_Plan.docx # Word version of strategy
+config/                           # Env-specific configs
+scripts/                          # Deployment and setup scripts
+src/lambda/                       # Lambda source code
+terraform/                        # Infrastructure as code
+tests/                            # Unit, integration, E2E tests
 ```
 
 ## 🚀 Quick Start
@@ -74,9 +78,11 @@ We recommend the **Webhook** approach for most use cases. It provides:
 
 ### Main Guides
 
-- **[STRATEGY_RANKING.md](STRATEGY_RANKING.md)** - Compare all 4 migration strategies with scoring and recommendations
-- **[WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md)** - Complete webhook setup with channel renewal and custom validation checks
-- **[Google_Drive_to_S3_Migration_Plan.docx](Google_Drive_to_S3_Migration_Plan.docx)** - Word document format (for sharing with stakeholders)
+- **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** - Step-by-step deployment and operations playbook
+- **[WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md)** - Webhook setup with channel renewal and validation checks
+- **[STRATEGY_RANKING.md](STRATEGY_RANKING.md)** - Comparison and scoring of the 4 migration strategies
+- **[Google_Drive_to_S3_Migration_Plan.docx](Google_Drive_to_S3_Migration_Plan.docx)** - Word-format strategy for sharing with stakeholders
+- **[PIPELINE_STRATEGY_NOTES.md](PIPELINE_STRATEGY_NOTES.md)** - Tree-of-thought strategy exploration
 
 ### Key Sections in WEBHOOK_IMPLEMENTATION.md
 
@@ -268,7 +274,7 @@ aws dynamodb scan \
 
 ## 📖 Full Implementation Guide
 
-For complete step-by-step instructions, see **[WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md)**
+For complete step-by-step instructions, see **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** (one-stop playbook).
 
 This includes:
 - Google Drive API setup
