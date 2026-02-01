@@ -47,7 +47,7 @@ We evaluated four different approaches:
 
 **→ See [STRATEGY_RANKING.md](STRATEGY_RANKING.md) for detailed comparison**
 
-### 2. Implement Webhook Solution
+### 2. Implement Webhook Solution (Recommended)
 
 We recommend the **Webhook** approach for most use cases. It provides:
 - Real-time sync (seconds latency)
@@ -55,24 +55,35 @@ We recommend the **Webhook** approach for most use cases. It provides:
 - 4-level custom validation system
 - Complete audit logging
 
-**→ Follow [WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md) for complete step-by-step guide**
+**📖 Complete Implementation Guide:** [WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md) provides:
+- **Section 2:** Comprehensive prerequisite setup (development tools, version control, local environment)
+- **Section 3:** Step-by-step Google Cloud Platform setup with test scripts
+- **Sections 4-10:** Architecture, implementation, deployment, and testing
+
+**⚡ Quick Deploy Guide:** [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) for experienced users
 
 ### 3. Deploy to AWS
 
+**For detailed step-by-step instructions, see [WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md)**
+
 ```bash
-# Prerequisites
+# Prerequisites (detailed in WEBHOOK_IMPLEMENTATION.md Section 2)
 - AWS Account with Lambda, API Gateway, S3, DynamoDB, Secrets Manager
 - Google Cloud Project with Drive API enabled
-- Terraform (optional, for IaC)
+- Development tools: AWS CLI, Terraform, Python 3.11+, Node.js 18+
+- Service account credentials
 
-# Steps
-1. Create Google Drive service account
-2. Configure AWS resources
-3. Deploy Lambda functions
-4. Set up API Gateway webhook endpoint
-5. Configure CloudWatch Events for channel renewal
-6. Test and monitor
+# Steps (detailed in WEBHOOK_IMPLEMENTATION.md)
+1. Create Google Drive service account (Section 3.3)
+2. Configure and test service account access (Section 3.6)
+3. Configure AWS resources (Section 7)
+4. Deploy Lambda functions (Section 9)
+5. Set up API Gateway webhook endpoint (Section 7)
+6. Configure CloudWatch Events for channel renewal (Section 4)
+7. Test and monitor (Sections 10 & 11)
 ```
+
+**💡 Tip:** If this is your first time, start with [WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md). If you're experienced with AWS/GCP, use [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) for a faster deployment.
 
 ## 📚 Documentation
 
@@ -87,13 +98,23 @@ We recommend the **Webhook** approach for most use cases. It provides:
 ### Key Sections in WEBHOOK_IMPLEMENTATION.md
 
 1. **Architecture** - System diagram and component overview
-2. **Setup** - Google Drive API and service account configuration
-3. **Channel Management** - Handling 24-hour webhook expiration
-4. **Webhook Handler** - Processing files with 4 custom checks
-5. **Infrastructure as Code** - Terraform templates
-6. **Monitoring & Alerts** - CloudWatch and SNS setup
-7. **Testing** - Manual test commands
+2. **Prerequisites and Environment Setup** (NEW!) - Comprehensive setup guide including:
+   - Development tools installation (Node.js, Python, AWS CLI, Terraform, Google Cloud SDK)
+   - Version control configuration
+   - Python virtual environment setup
+3. **Google Cloud Platform Setup** (EXPANDED!) - Step-by-step guide including:
+   - Creating Google Cloud Project
+   - Enabling Google Drive API
+   - Service account creation and configuration
+   - Security best practices
+   - Testing service account access with provided test script
+4. **Channel Management** - Handling 24-hour webhook expiration
+5. **Webhook Handler** - Processing files with 4 custom checks
+6. **Infrastructure as Code** - Terraform templates
+7. **Monitoring & Alerts** - CloudWatch and SNS setup
 8. **Deployment Checklist** - Step-by-step deployment
+9. **Testing** - Manual test commands
+10. **Troubleshooting** (NEW!) - Common issues and solutions
 
 ## 🔑 Key Concepts
 

@@ -2,11 +2,31 @@
 
 Your one-stop, end-to-end checklist to deploy and operate the production-ready pipeline in this repo.
 
+**📖 For comprehensive step-by-step instructions including detailed prerequisite setup, see [WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md)**
+
 ## 0) Prerequisites
+
+**⚠️ IMPORTANT:** If you're setting up for the first time and need detailed instructions for installing development tools, configuring Google Cloud, and creating service accounts, please refer to [WEBHOOK_IMPLEMENTATION.md Sections 2 & 3](WEBHOOK_IMPLEMENTATION.md#2-prerequisites-and-environment-setup).
+
+**Quick Checklist (assumes tools are already installed):**
 - AWS account with rights to Lambda, API Gateway, S3, DynamoDB, SNS, Secrets Manager, CloudWatch, IAM.
 - CLI tools: AWS CLI v2, Terraform ≥ 1.0, Python 3.11, zip, jq, make.
 - GitHub Actions enabled; repo secrets set: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` (if not `us-east-1`), `S3_BUCKET_NAME` (globally unique), `GDRIVE_FOLDER_ID`, `ALERT_EMAIL`.
-- Google Cloud project with Drive API enabled; ability to create a Service Account and JSON key.
+- Google Cloud project with Drive API enabled; Service Account created with JSON key downloaded.
+
+**📚 Detailed Setup Guide:** See [WEBHOOK_IMPLEMENTATION.md Section 2: Prerequisites](WEBHOOK_IMPLEMENTATION.md#2-prerequisites-and-environment-setup) for:
+- Development tools installation (Node.js, Python, AWS CLI, Terraform, Google Cloud SDK)
+- Version control setup
+- Python virtual environment configuration
+- Project structure creation
+
+**🔐 Google Cloud Setup Guide:** See [WEBHOOK_IMPLEMENTATION.md Section 3: Google Cloud Platform Setup](WEBHOOK_IMPLEMENTATION.md#3-google-cloud-platform-setup) for:
+- Creating Google Cloud Project
+- Enabling Google Drive API
+- Creating and configuring Service Account
+- Securing service account keys
+- Creating and sharing Google Drive folders
+- Testing service account access
 
 ## 1) Clone
 ```bash
@@ -23,10 +43,19 @@ cd data-pipeline
 3. Optional: adjust per-env YAML in `config/dev.yaml` and `config/prod.yaml`.
 
 ## 3) Google setup (service account + folder share)
+
+**⚠️ For first-time setup with detailed step-by-step instructions, see [WEBHOOK_IMPLEMENTATION.md Section 3](WEBHOOK_IMPLEMENTATION.md#3-google-cloud-platform-setup)**
+
+**Quick Steps (assumes you've read the detailed guide):**
 1. In Google Cloud Console, create a Service Account (Viewer role is enough for reads).
+   - **Detailed instructions:** [Section 3.3](WEBHOOK_IMPLEMENTATION.md#33-create-service-account)
 2. Create & download the JSON key.
+   - **Detailed instructions with security warnings:** [Section 3.4](WEBHOOK_IMPLEMENTATION.md#34-generate-and-secure-service-account-key)
 3. Share the target Google Drive folder with the service account email as **Viewer**.
-4. Store creds + webhook token in AWS Secrets Manager via helper script:
+   - **Detailed instructions:** [Section 3.5](WEBHOOK_IMPLEMENTATION.md#35-create-and-share-google-drive-folder)
+4. **💡 Recommended:** Test service account access before proceeding.
+   - **Test script and validation:** [Section 3.6](WEBHOOK_IMPLEMENTATION.md#36-test-service-account-access)
+5. Store creds + webhook token in AWS Secrets Manager via helper script:
    ```bash
    ./scripts/setup_google_auth.sh /path/to/service-account-key.json
    ```
