@@ -91,12 +91,12 @@ This system transforms customer care operations by automating call analysis, red
 **Choose your guide based on experience level:**
 
 #### 🎓 New to AWS/GCP or Want Step-by-Step Guide
-**Start here:** [WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md)
+**Start here:** [SETUP_GUIDE.md](SETUP_GUIDE.md)
 
 This comprehensive guide provides:
-- **Section 2**: Complete prerequisite setup (tools, accounts, configuration)
-- **Section 3**: Google Cloud Platform setup with test scripts
-- **Sections 4-11**: Detailed implementation with code examples, testing, troubleshooting
+- **Section 1**: Prerequisites (AWS, Google Cloud, development tools)
+- **Section 2-3**: Google Cloud Platform and AWS setup with step-by-step instructions
+- **Section 4-10**: Deployment, testing, monitoring, and troubleshooting
 
 **Time Estimate**: 2-4 hours for initial setup
 
@@ -113,7 +113,7 @@ This concise guide assumes familiarity with:
 ### Deployment Steps (High-Level)
 
 ```bash
-# 1. Set up Google Drive integration (Section 3 in WEBHOOK_IMPLEMENTATION.md)
+# 1. Set up Google Drive integration (Section 2 in SETUP_GUIDE.md)
 - Create Google Cloud Project
 - Enable Google Drive API
 - Create service account and download credentials
@@ -122,7 +122,7 @@ This concise guide assumes familiarity with:
 
 # 2. Configure AWS foundation (covered in implementation guides)
 - Set up AWS account and CLI
-- Initialize AWS CDK project
+- Initialize Terraform project
 - Configure S3, DynamoDB, Secrets Manager
 
 # 3. Deploy AI processing pipeline
@@ -148,7 +148,7 @@ This concise guide assumes familiarity with:
 - Validate WebSocket notifications
 ```
 
-**💡 Tip**: First-time users should follow [WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md) for detailed guidance. Experienced users can use [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) for faster deployment.
+**💡 Tip**: First-time users should follow [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed guidance. Experienced users can use [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) for faster deployment.
 
 ## 📚 Documentation
 
@@ -192,18 +192,18 @@ This concise guide assumes familiarity with:
 
 ### 🚀 Quick Reference Guides
 
-- **[WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md)** - Google Drive webhook setup including:
-  - **Section 2**: Prerequisites and environment setup
+- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Complete deployment walkthrough including:
+  - **Section 1**: Prerequisites and environment setup
    - Development tools installation (Node.js, Python, AWS CLI, Terraform, Google Cloud SDK)
    - Version control configuration
    - Python virtual environment setup
-  - **Section 3**: Google Cloud Platform setup
+  - **Section 2**: Google Cloud Platform setup
    - Creating Google Cloud Project
    - Enabling Google Drive API
    - Service account creation and configuration
    - Security best practices
    - Testing service account access with provided test script
-  - **Section 11**: Troubleshooting common issues
+  - **Section 10**: Troubleshooting common issues
 
 - **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** - Quick deployment reference for experienced users
 
@@ -212,16 +212,21 @@ This concise guide assumes familiarity with:
 ```
 README.md                              # This file
 ARCHITECTURE.md                        # System architecture (START HERE)
+SETUP_GUIDE.md                         # Complete deployment walkthrough
+IMPLEMENTATION_GUIDE.md                # Quick deployment guide
 case_study_file.md                     # Complete specification
 01_features_and_stories.md             # User stories and features
 02_build_process_steps.md              # Implementation steps
 03_stage_completion_checklist.md       # Validation checklists
 04_navigation_guide.md                 # Documentation roadmap
-WEBHOOK_IMPLEMENTATION.md              # Google Drive webhook setup
-IMPLEMENTATION_GUIDE.md                # Quick deployment guide
 config/                                # Environment configs
 scripts/                               # Deployment scripts
 src/lambda/                            # Lambda functions
+  ├── webhook/                         # Webhook handler
+  ├── processing/                      # AI processing (Transcribe, Bedrock)
+  ├── api/                             # REST API handlers
+  └── websocket/                       # WebSocket handlers
+stepfunctions/                         # Step Functions definitions
 terraform/                             # Infrastructure as Code
 tests/                                 # Test suites
 ```
@@ -440,7 +445,7 @@ aws dynamodb query \
 - Review individual Lambda function logs
 - Verify IAM roles have required permissions
 
-**→ See [WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md#11-troubleshooting) for detailed troubleshooting**
+**→ See [SETUP_GUIDE.md](SETUP_GUIDE.md#10-troubleshooting) for detailed troubleshooting**
 
 ## 🚦 Getting Started
 
@@ -479,12 +484,12 @@ Olamide Olajide - [@olajio](https://github.com/olajio)
 
 ## 💬 Need Help?
 
-1. **Check documentation**: [ARCHITECTURE.md](ARCHITECTURE.md) and [02_build_process_steps.md](02_build_process_steps.md)
-2. **Review troubleshooting**: [WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md#11-troubleshooting)
+1. **Check documentation**: [ARCHITECTURE.md](ARCHITECTURE.md) and [SETUP_GUIDE.md](SETUP_GUIDE.md)
+2. **Review troubleshooting**: [SETUP_GUIDE.md](SETUP_GUIDE.md#10-troubleshooting)
 3. **Check CloudWatch logs**: For detailed error messages and stack traces
 4. **Open an issue**: On GitHub with reproduction steps
 
 ---
 
 **Repository**: [github.com/olajio/customer-care-call-processor](https://github.com/olajio/customer-care-call-processor)  
-**Last Updated**: January 31, 2026
+**Last Updated**: January 2025

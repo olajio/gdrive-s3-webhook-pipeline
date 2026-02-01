@@ -1,0 +1,274 @@
+{
+  "Comment": "Customer Care Call Processing Pipeline - Processes call recordings through transcription and AI summarization",
+  "StartAt": "UpdateStatusTranscribing",
+  "States": {
+    "UpdateStatusTranscribing": {
+      "Type": "Task",
+      "Resource": "${UpdateStatusFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "status": "TRANSCRIBING"
+      },
+      "ResultPath": "$.status_update",
+      "Next": "StartTranscription"
+    },
+    
+    "StartTranscription": {
+      "Type": "Task",
+      "Resource": "${StartTranscribeFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "s3_bucket.$": "$.s3_bucket",
+        "s3_key.$": "$.s3_key",
+        "caller_id.$": "$.caller_id",
+        "assigned_user_id.$": "$.assigned_user_id"
+      },
+      "ResultPath": "$.transcribe",
+      "Next": "WaitForTranscription",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleTranscriptionError"
+        }
+      ]
+    },
+    
+    "WaitForTranscription": {
+      "Type": "Wait",
+      "Seconds": 30,
+      "Next": "CheckTranscriptionStatus"
+    },
+    
+    "CheckTranscriptionStatus": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:transcribe:getTranscriptionJob",
+      "Parameters": {
+        "TranscriptionJobName.$": "$.transcribe.transcribe_job_name"
+      },
+      "ResultPath": "$.transcribe_status",
+      "Next": "IsTranscriptionComplete"
+    },
+    
+    "IsTranscriptionComplete": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.transcribe_status.TranscriptionJob.TranscriptionJobStatus",
+          "StringEquals": "COMPLETED",
+          "Next": "NotifyTranscriptionComplete"
+        },
+        {
+          "Variable": "$.transcribe_status.TranscriptionJob.TranscriptionJobStatus",
+          "StringEquals": "FAILED",
+          "Next": "HandleTranscriptionError"
+        }
+      ],
+      "Default": "WaitForTranscription"
+    },
+    
+    "NotifyTranscriptionComplete": {
+      "Type": "Task",
+      "Resource": "${NotifyFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "status": "TRANSCRIBING",
+        "assigned_user_id.$": "$.assigned_user_id",
+        "message_type": "status_update",
+        "data": {
+          "stage": "transcription_complete"
+        }
+      },
+      "ResultPath": "$.notification",
+      "Next": "ProcessTranscript"
+    },
+    
+    "ProcessTranscript": {
+      "Type": "Task",
+      "Resource": "${ProcessTranscriptFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "transcribe_output_bucket.$": "$.transcribe.transcribe_output_bucket",
+        "transcribe_output_key.$": "$.transcribe.transcribe_output_key",
+        "assigned_user_id.$": "$.assigned_user_id"
+      },
+      "ResultPath": "$.transcript",
+      "Next": "UpdateStatusSummarizing",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleProcessingError"
+        }
+      ]
+    },
+    
+    "UpdateStatusSummarizing": {
+      "Type": "Task",
+      "Resource": "${UpdateStatusFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "status": "SUMMARIZING"
+      },
+      "ResultPath": "$.status_update",
+      "Next": "NotifySummarizing"
+    },
+    
+    "NotifySummarizing": {
+      "Type": "Task",
+      "Resource": "${NotifyFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "status": "SUMMARIZING",
+        "assigned_user_id.$": "$.assigned_user_id",
+        "message_type": "status_update"
+      },
+      "ResultPath": "$.notification",
+      "Next": "GenerateSummary"
+    },
+    
+    "GenerateSummary": {
+      "Type": "Task",
+      "Resource": "${GenerateSummaryFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "transcript_text.$": "$.transcript.transcript_text",
+        "transcript_s3_key.$": "$.transcript.transcript_s3_key",
+        "assigned_user_id.$": "$.assigned_user_id"
+      },
+      "ResultPath": "$.summary",
+      "Next": "SaveSummary",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleSummarizationError"
+        }
+      ],
+      "Retry": [
+        {
+          "ErrorEquals": ["ThrottlingException", "ServiceUnavailableException"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ]
+    },
+    
+    "SaveSummary": {
+      "Type": "Task",
+      "Resource": "${SaveSummaryFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "summary.$": "$.summary.summary",
+        "key_points.$": "$.summary.key_points",
+        "action_items.$": "$.summary.action_items",
+        "sentiment.$": "$.summary.sentiment",
+        "urgency.$": "$.summary.urgency",
+        "categories.$": "$.summary.categories",
+        "transcript_s3_key.$": "$.transcript.transcript_s3_key"
+      },
+      "ResultPath": "$.save_result",
+      "Next": "NotifyComplete",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleSaveError"
+        }
+      ]
+    },
+    
+    "NotifyComplete": {
+      "Type": "Task",
+      "Resource": "${NotifyFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "status": "COMPLETED",
+        "assigned_user_id.$": "$.assigned_user_id",
+        "message_type": "processing_complete",
+        "data": {
+          "summary.$": "$.summary.summary",
+          "sentiment.$": "$.summary.sentiment",
+          "urgency.$": "$.summary.urgency"
+        }
+      },
+      "ResultPath": "$.notification",
+      "Next": "ProcessingComplete"
+    },
+    
+    "ProcessingComplete": {
+      "Type": "Succeed"
+    },
+    
+    "HandleTranscriptionError": {
+      "Type": "Task",
+      "Resource": "${UpdateStatusFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "status": "FAILED",
+        "error_message": "Transcription failed"
+      },
+      "ResultPath": "$.status_update",
+      "Next": "NotifyError"
+    },
+    
+    "HandleProcessingError": {
+      "Type": "Task",
+      "Resource": "${UpdateStatusFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "status": "FAILED",
+        "error_message": "Transcript processing failed"
+      },
+      "ResultPath": "$.status_update",
+      "Next": "NotifyError"
+    },
+    
+    "HandleSummarizationError": {
+      "Type": "Task",
+      "Resource": "${UpdateStatusFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "status": "FAILED",
+        "error_message": "AI summarization failed"
+      },
+      "ResultPath": "$.status_update",
+      "Next": "NotifyError"
+    },
+    
+    "HandleSaveError": {
+      "Type": "Task",
+      "Resource": "${UpdateStatusFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "status": "FAILED",
+        "error_message": "Failed to save summary"
+      },
+      "ResultPath": "$.status_update",
+      "Next": "NotifyError"
+    },
+    
+    "NotifyError": {
+      "Type": "Task",
+      "Resource": "${NotifyFunctionArn}",
+      "Parameters": {
+        "call_id.$": "$.call_id",
+        "status": "FAILED",
+        "assigned_user_id.$": "$.assigned_user_id",
+        "message_type": "processing_error",
+        "data": {
+          "error.$": "$.error"
+        }
+      },
+      "ResultPath": "$.notification",
+      "Next": "ProcessingFailed"
+    },
+    
+    "ProcessingFailed": {
+      "Type": "Fail",
+      "Error": "ProcessingError",
+      "Cause": "Call processing pipeline failed"
+    }
+  }
+}

@@ -1,5 +1,8 @@
 """
-Shared utility functions for Google Drive to S3 webhook pipeline.
+Shared utility functions for Customer Care Call Processing System.
+
+This module provides common functionality used across all Lambda functions
+in the call processing pipeline.
 """
 import hashlib
 import hmac
@@ -8,6 +11,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
+from decimal import Decimal
 
 import boto3
 from botocore.exceptions import ClientError
@@ -20,14 +24,22 @@ logger.setLevel(logging.INFO)
 dynamodb = boto3.resource('dynamodb')
 s3_client = boto3.client('s3')
 secrets_client = boto3.client('secretsmanager')
-sns_client = boto3.client('sns')
 
 # Environment variables
-CHANNELS_TABLE = os.environ.get('CHANNELS_TABLE', 'gdrive_channels')
-SYNC_LOG_TABLE = os.environ.get('SYNC_LOG_TABLE', 'gdrive_s3_sync_log')
-S3_BUCKET = os.environ.get('S3_BUCKET')
-SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN')
-GOOGLE_CREDENTIALS_SECRET = os.environ.get('GOOGLE_CREDENTIALS_SECRET', 'gdrive-webhook-credentials')
+DYNAMODB_TABLE = os.environ.get('DYNAMODB_TABLE', 'call-summaries')
+CONNECTIONS_TABLE = os.environ.get('CONNECTIONS_TABLE', 'websocket-connections')
+S3_BUCKET = os.environ.get('S3_BUCKET', 'customer-care-call-processor')
+GOOGLE_CREDENTIALS_SECRET = os.environ.get('GOOGLE_CREDENTIALS_SECRET', 'google-drive-credentials')
+
+
+class DecimalEncoder(json.JSONEncoder):
+    """JSON encoder that handles Decimal types from DynamoDB."""
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            if obj % 1 == 0:
+                return int(obj)
+            return float(obj)
+        return super().default(obj)
 
 
 def validate_webhook_signature(headers: Dict[str, str], webhook_token: str) -> bool:
@@ -82,271 +94,216 @@ def get_google_credentials() -> Dict[str, Any]:
     return get_secret(GOOGLE_CREDENTIALS_SECRET)
 
 
-def should_sync_file(file_metadata: Dict[str, Any], allowed_extensions: Optional[List[str]] = None) -> bool:
+def is_audio_file(filename: str) -> bool:
     """
-    Determine if a file should be synced based on filters.
+    Check if a file is an audio file based on extension.
     
     Args:
-        file_metadata: Google Drive file metadata
-        allowed_extensions: List of allowed file extensions (e.g., ['.csv', '.json'])
+        filename: Name of the file
         
     Returns:
-        True if file should be synced, False otherwise
+        True if audio file, False otherwise
     """
-    # Skip folders
-    mime_type = file_metadata.get('mimeType', '')
-    if mime_type == 'application/vnd.google-apps.folder':
-        logger.info(f"Skipping folder: {file_metadata.get('name')}")
-        return False
-    
-    # Skip Google Workspace native files (Docs, Sheets, etc.)
-    if mime_type.startswith('application/vnd.google-apps.'):
-        logger.info(f"Skipping Google Workspace file: {file_metadata.get('name')}")
-        return False
-    
-    # Check file extension if filter is provided
-    if allowed_extensions:
-        file_name = file_metadata.get('name', '')
-        extension = os.path.splitext(file_name)[1].lower()
-        
-        if extension not in allowed_extensions:
-            logger.info(f"Skipping file with extension {extension}: {file_name}")
-            return False
-    
-    # Check file size (default max: 100 MB)
-    max_size_bytes = int(os.environ.get('MAX_FILE_SIZE_MB', '100')) * 1024 * 1024
-    file_size = int(file_metadata.get('size', 0))
-    
-    if file_size > max_size_bytes:
-        logger.warning(f"File too large ({file_size} bytes): {file_metadata.get('name')}")
-        return False
-    
-    return True
-
-
-def is_duplicate_file(file_id: str, md5_checksum: str) -> bool:
-    """
-    Check if file with same content already exists in S3.
-    
-    Args:
-        file_id: Google Drive file ID
-        md5_checksum: MD5 hash of file content
-        
-    Returns:
-        True if duplicate exists, False otherwise
-    """
-    try:
-        # Check S3 object metadata
-        s3_key = f"gdrive/{file_id}"
-        response = s3_client.head_object(Bucket=S3_BUCKET, Key=s3_key)
-        
-        # Compare MD5 hashes (S3 stores as ETag for simple uploads)
-        s3_md5 = response.get('ETag', '').strip('"')
-        
-        if s3_md5 == md5_checksum:
-            logger.info(f"Duplicate file detected (MD5 match): {file_id}")
-            return True
-            
-    except ClientError as e:
-        if e.response['Error']['Code'] == '404':
-            # Object doesn't exist, not a duplicate
-            return False
-        else:
-            logger.error(f"Error checking for duplicate: {e}")
-            raise
-    
-    return False
-
-
-def log_sync_event(
-    file_id: str,
-    file_name: str,
-    status: str,
-    s3_key: Optional[str] = None,
-    error_message: Optional[str] = None,
-    file_size: Optional[int] = None,
-    md5_checksum: Optional[str] = None
-) -> None:
-    """
-    Log a sync event to DynamoDB.
-    
-    Args:
-        file_id: Google Drive file ID
-        file_name: File name
-        status: Sync status ('success', 'failure', 'skipped')
-        s3_key: S3 object key (if uploaded)
-        error_message: Error details (if failed)
-        file_size: File size in bytes
-        md5_checksum: MD5 hash of file content
-    """
-    table = dynamodb.Table(SYNC_LOG_TABLE)
-    
-    item = {
-        'file_id': file_id,
-        'timestamp': datetime.utcnow().isoformat(),
-        'file_name': file_name,
-        'status': status,
-        'ttl': int((datetime.utcnow() + timedelta(days=90)).timestamp())
+    audio_extensions = {
+        '.mp3', '.wav', '.flac', '.ogg', '.m4a', 
+        '.wma', '.aac', '.webm', '.amr', '.mp4'
     }
-    
-    if s3_key:
-        item['s3_key'] = s3_key
-    if error_message:
-        item['error_message'] = error_message
-    if file_size is not None:
-        item['file_size'] = file_size
-    if md5_checksum:
-        item['md5_checksum'] = md5_checksum
-    
-    try:
-        table.put_item(Item=item)
-        logger.info(f"Logged sync event: {file_id} - {status}")
-    except ClientError as e:
-        logger.error(f"Failed to log sync event: {e}")
-        # Don't raise - logging failure shouldn't stop the pipeline
+    ext = os.path.splitext(filename.lower())[1]
+    return ext in audio_extensions
 
 
-def send_alert(subject: str, message: str) -> None:
+def get_audio_format(filename: str) -> str:
     """
-    Send an alert via SNS.
+    Get audio format for Amazon Transcribe from filename.
     
     Args:
-        subject: Alert subject
-        message: Alert message body
-    """
-    if not SNS_TOPIC_ARN:
-        logger.warning("SNS_TOPIC_ARN not configured, skipping alert")
-        return
-    
-    try:
-        sns_client.publish(
-            TopicArn=SNS_TOPIC_ARN,
-            Subject=subject,
-            Message=message
-        )
-        logger.info(f"Sent alert: {subject}")
-    except ClientError as e:
-        logger.error(f"Failed to send SNS alert: {e}")
-
-
-def get_channel_info(channel_id: str) -> Optional[Dict[str, Any]]:
-    """
-    Retrieve channel information from DynamoDB.
-    
-    Args:
-        channel_id: Google Drive webhook channel ID
+        filename: Name of the audio file
         
     Returns:
-        Channel info dictionary or None if not found
+        Media format string for Transcribe API
     """
-    table = dynamodb.Table(CHANNELS_TABLE)
+    ext = os.path.splitext(filename.lower())[1].lstrip('.')
+    format_map = {
+        'mp3': 'mp3',
+        'mp4': 'mp4',
+        'm4a': 'mp4',
+        'wav': 'wav',
+        'flac': 'flac',
+        'ogg': 'ogg',
+        'webm': 'webm',
+        'amr': 'amr',
+        'wma': 'mp3',
+        'aac': 'mp4'
+    }
+    return format_map.get(ext, 'mp3')
+
+
+def generate_call_id(file_id: str, timestamp: Optional[str] = None) -> str:
+    """
+    Generate a unique call ID from file ID and timestamp.
     
+    Args:
+        file_id: Google Drive file ID
+        timestamp: Optional timestamp string
+        
+    Returns:
+        Unique call ID
+    """
+    if timestamp is None:
+        timestamp = datetime.utcnow().isoformat()
+    
+    combined = f"{file_id}-{timestamp}"
+    hash_suffix = hashlib.sha256(combined.encode()).hexdigest()[:8]
+    return f"call-{hash_suffix}"
+
+
+def generate_s3_key(call_id: str, prefix: str, extension: str) -> str:
+    """
+    Generate S3 key with date-based prefix.
+    
+    Args:
+        call_id: Unique call identifier
+        prefix: Folder prefix (e.g., 'raw-audio', 'transcripts', 'summaries')
+        extension: File extension
+        
+    Returns:
+        Full S3 key path
+    """
+    date_prefix = datetime.utcnow().strftime('%Y/%m/%d')
+    return f"{prefix}/{date_prefix}/{call_id}.{extension}"
+
+
+def get_presigned_url(s3_key: str, expiration: int = 3600) -> Optional[str]:
+    """
+    Generate presigned URL for S3 object access.
+    
+    Args:
+        s3_key: S3 object key
+        expiration: URL expiration in seconds
+        
+    Returns:
+        Presigned URL or None if error
+    """
     try:
-        response = table.get_item(Key={'channel_id': channel_id})
-        return response.get('Item')
+        url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': S3_BUCKET, 'Key': s3_key},
+            ExpiresIn=expiration
+        )
+        return url
     except ClientError as e:
-        logger.error(f"Failed to retrieve channel info: {e}")
+        logger.error(f"Failed to generate presigned URL: {e}")
         return None
 
 
-def save_channel_info(
-    channel_id: str,
-    resource_id: str,
-    folder_id: str,
-    expiration: str,
-    page_token: Optional[str] = None
-) -> None:
+def update_call_status(call_id: str, status: str, 
+                       additional_fields: Optional[Dict[str, Any]] = None) -> bool:
     """
-    Save channel information to DynamoDB.
+    Update call status in DynamoDB.
     
     Args:
-        channel_id: Google Drive webhook channel ID
-        resource_id: Google Drive resource ID
-        folder_id: Google Drive folder ID being watched
-        expiration: ISO format expiration timestamp
-        page_token: Change token for incremental sync
+        call_id: Unique call identifier
+        status: New status value
+        additional_fields: Optional additional fields to update
+        
+    Returns:
+        True if successful, False otherwise
     """
-    table = dynamodb.Table(CHANNELS_TABLE)
+    table = dynamodb.Table(DYNAMODB_TABLE)
+    timestamp = datetime.utcnow().isoformat() + 'Z'
     
-    item = {
-        'channel_id': channel_id,
-        'resource_id': resource_id,
-        'folder_id': folder_id,
-        'expiration': expiration,
-        'created_at': datetime.utcnow().isoformat(),
-        'last_renewed': datetime.utcnow().isoformat(),
-        'status': 'active'
+    update_expr = 'SET #status = :status, updated_at = :updated'
+    expr_names = {'#status': 'status'}
+    expr_values = {
+        ':status': status,
+        ':updated': timestamp
     }
     
-    if page_token:
-        item['page_token'] = page_token
-    
-    try:
-        table.put_item(Item=item)
-        logger.info(f"Saved channel info: {channel_id}")
-    except ClientError as e:
-        logger.error(f"Failed to save channel info: {e}")
-        raise
-
-
-def update_page_token(channel_id: str, page_token: str) -> None:
-    """
-    Update the page token for incremental sync.
-    
-    Args:
-        channel_id: Google Drive webhook channel ID
-        page_token: New page token
-    """
-    table = dynamodb.Table(CHANNELS_TABLE)
+    if additional_fields:
+        for key, value in additional_fields.items():
+            update_expr += f', {key} = :{key}'
+            expr_values[f':{key}'] = value
     
     try:
         table.update_item(
-            Key={'channel_id': channel_id},
-            UpdateExpression='SET page_token = :token, last_updated = :ts',
-            ExpressionAttributeValues={
-                ':token': page_token,
-                ':ts': datetime.utcnow().isoformat()
-            }
+            Key={'call_id': call_id},
+            UpdateExpression=update_expr,
+            ExpressionAttributeNames=expr_names,
+            ExpressionAttributeValues=expr_values
         )
-        logger.info(f"Updated page token for channel: {channel_id}")
+        return True
     except ClientError as e:
-        logger.error(f"Failed to update page token: {e}")
+        logger.error(f"Failed to update status for {call_id}: {e}")
+        return False
 
 
-def calculate_md5(content: bytes) -> str:
+def build_api_response(status_code: int, body: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Calculate MD5 hash of content.
+    Build standardized API Gateway response.
     
     Args:
-        content: File content bytes
+        status_code: HTTP status code
+        body: Response body dictionary
         
     Returns:
-        MD5 hash as hex string
+        API Gateway response object
     """
-    return hashlib.md5(content).hexdigest()
+    return {
+        'statusCode': status_code,
+        'headers': {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': True,
+            'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key',
+            'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+        },
+        'body': json.dumps(body, cls=DecimalEncoder)
+    }
 
 
-class MetricsPublisher:
-    """Helper class for publishing CloudWatch metrics."""
+def parse_caller_id_from_filename(filename: str) -> Optional[str]:
+    """
+    Extract caller ID from audio filename if present.
+    Expected formats: 
+    - caller_+1234567890_2024-01-15.mp3
+    - call_customer123_timestamp.wav
     
-    def __init__(self, namespace: str = 'GoogleDriveWebhook'):
-        self.cloudwatch = boto3.client('cloudwatch')
-        self.namespace = namespace
+    Args:
+        filename: Audio filename
+        
+    Returns:
+        Caller ID if found, None otherwise
+    """
+    import re
     
-    def publish_metric(self, metric_name: str, value: float, unit: str = 'Count'):
-        """Publish a single metric to CloudWatch."""
-        try:
-            self.cloudwatch.put_metric_data(
-                Namespace=self.namespace,
-                MetricData=[
-                    {
-                        'MetricName': metric_name,
-                        'Value': value,
-                        'Unit': unit,
-                        'Timestamp': datetime.utcnow()
-                    }
-                ]
-            )
-            logger.debug(f"Published metric: {metric_name}={value}")
-        except ClientError as e:
-            logger.error(f"Failed to publish metric {metric_name}: {e}")
+    # Pattern for phone number
+    phone_pattern = r'caller_(\+?\d{10,15})_'
+    phone_match = re.search(phone_pattern, filename)
+    if phone_match:
+        return phone_match.group(1)
+    
+    # Pattern for customer ID
+    customer_pattern = r'call_([a-zA-Z0-9]+)_'
+    customer_match = re.search(customer_pattern, filename)
+    if customer_match:
+        return customer_match.group(1)
+    
+    return None
+
+
+def sanitize_text_for_dynamodb(text: str, max_length: int = 400000) -> str:
+    """
+    Sanitize text for DynamoDB storage.
+    DynamoDB has a 400KB item limit, so we need to truncate if necessary.
+    
+    Args:
+        text: Text to sanitize
+        max_length: Maximum character length
+        
+    Returns:
+        Sanitized text
+    """
+    if len(text) > max_length:
+        logger.warning(f"Text truncated from {len(text)} to {max_length} characters")
+        return text[:max_length] + "... [truncated]"
+    return text

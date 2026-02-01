@@ -1,5 +1,9 @@
-# S3 bucket for synced files
-resource "aws_s3_bucket" "gdrive_sync" {
+# ==================================================
+# Customer Care Call Processing System - S3 Storage
+# ==================================================
+
+# Primary S3 bucket for call recordings, transcripts, and summaries
+resource "aws_s3_bucket" "call_storage" {
   bucket = var.s3_bucket_name
 
   tags = merge(
@@ -11,8 +15,8 @@ resource "aws_s3_bucket" "gdrive_sync" {
 }
 
 # Block public access
-resource "aws_s3_bucket_public_access_block" "gdrive_sync" {
-  bucket = aws_s3_bucket.gdrive_sync.id
+resource "aws_s3_bucket_public_access_block" "call_storage" {
+  bucket = aws_s3_bucket.call_storage.id
 
   block_public_acls       = true
   block_public_policy     = true
@@ -20,9 +24,9 @@ resource "aws_s3_bucket_public_access_block" "gdrive_sync" {
   restrict_public_buckets = true
 }
 
-# Enable versioning
-resource "aws_s3_bucket_versioning" "gdrive_sync" {
-  bucket = aws_s3_bucket.gdrive_sync.id
+# Enable versioning for production
+resource "aws_s3_bucket_versioning" "call_storage" {
+  bucket = aws_s3_bucket.call_storage.id
 
   versioning_configuration {
     status = var.environment == "prod" ? "Enabled" : "Suspended"
@@ -30,8 +34,8 @@ resource "aws_s3_bucket_versioning" "gdrive_sync" {
 }
 
 # Enable server-side encryption
-resource "aws_s3_bucket_server_side_encryption_configuration" "gdrive_sync" {
-  bucket = aws_s3_bucket.gdrive_sync.id
+resource "aws_s3_bucket_server_side_encryption_configuration" "call_storage" {
+  bucket = aws_s3_bucket.call_storage.id
 
   rule {
     apply_server_side_encryption_by_default {
@@ -41,13 +45,31 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "gdrive_sync" {
   }
 }
 
-# Lifecycle policy to transition old files to Glacier
-resource "aws_s3_bucket_lifecycle_configuration" "gdrive_sync" {
-  bucket = aws_s3_bucket.gdrive_sync.id
+# CORS configuration for frontend access
+resource "aws_s3_bucket_cors_configuration" "call_storage" {
+  bucket = aws_s3_bucket.call_storage.id
 
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = var.environment == "prod" ? ["https://your-production-domain.com"] : ["http://localhost:3000", "http://localhost:5173"]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3600
+  }
+}
+
+# Lifecycle policy for storage optimization
+resource "aws_s3_bucket_lifecycle_configuration" "call_storage" {
+  bucket = aws_s3_bucket.call_storage.id
+
+  # Raw audio files - archive after 90 days
   rule {
-    id     = "archive-old-files"
+    id     = "archive-raw-audio"
     status = "Enabled"
+
+    filter {
+      prefix = "raw-audio/"
+    }
 
     transition {
       days          = 90
@@ -60,19 +82,30 @@ resource "aws_s3_bucket_lifecycle_configuration" "gdrive_sync" {
     }
 
     expiration {
-      days = 2555  # 7 years
-    }
-
-    noncurrent_version_transition {
-      noncurrent_days = 30
-      storage_class   = "GLACIER_IR"
-    }
-
-    noncurrent_version_expiration {
-      noncurrent_days = 90
+      days = 2555 # 7 years (compliance)
     }
   }
 
+  # Transcripts - keep longer in standard storage
+  rule {
+    id     = "archive-transcripts"
+    status = "Enabled"
+
+    filter {
+      prefix = "transcripts/"
+    }
+
+    transition {
+      days          = 180
+      storage_class = "GLACIER_IR"
+    }
+
+    expiration {
+      days = 2555 # 7 years
+    }
+  }
+
+  # Cleanup incomplete uploads
   rule {
     id     = "cleanup-incomplete-uploads"
     status = "Enabled"
@@ -83,11 +116,11 @@ resource "aws_s3_bucket_lifecycle_configuration" "gdrive_sync" {
   }
 }
 
-# Enable logging
-resource "aws_s3_bucket_logging" "gdrive_sync" {
+# Enable access logging for production
+resource "aws_s3_bucket_logging" "call_storage" {
   count = var.environment == "prod" ? 1 : 0
 
-  bucket = aws_s3_bucket.gdrive_sync.id
+  bucket = aws_s3_bucket.call_storage.id
 
   target_bucket = aws_s3_bucket.logs[0].id
   target_prefix = "s3-access-logs/"

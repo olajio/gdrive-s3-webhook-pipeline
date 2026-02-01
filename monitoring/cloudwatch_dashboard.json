@@ -1,104 +1,307 @@
 {
   "widgets": [
     {
-      "type": "metric",
+      "type": "text",
       "x": 0,
       "y": 0,
-      "width": 12,
-      "height": 6,
-      "properties": {
-        "metrics": [
-          ["GoogleDriveWebhook", "WebhooksReceived", {"stat": "Sum", "label": "Webhooks Received"}],
-          [".", "FilesUploaded", {"stat": "Sum", "label": "Files Uploaded"}],
-          [".", "FilesSkipped", {"stat": "Sum", "label": "Files Skipped"}],
-          [".", "DuplicateFilesSkipped", {"stat": "Sum", "label": "Duplicates"}]
-        ],
-        "view": "timeSeries",
-        "stacked": false,
-        "region": "us-east-1",
-        "title": "File Processing Metrics",
-        "period": 300,
-        "yAxis": {
-          "left": {
-            "min": 0
-          }
-        }
-      }
-    },
-    {
-      "type": "metric",
-      "x": 12,
-      "y": 0,
-      "width": 12,
-      "height": 6,
-      "properties": {
-        "metrics": [
-          ["GoogleDriveWebhook", "GoogleDriveErrors", {"stat": "Sum"}],
-          [".", "AWSErrors", {"stat": "Sum"}],
-          [".", "S3UploadErrors", {"stat": "Sum"}],
-          [".", "LambdaErrors", {"stat": "Sum"}]
-        ],
-        "view": "timeSeries",
-        "stacked": false,
-        "region": "us-east-1",
-        "title": "Error Metrics",
-        "period": 300,
-        "yAxis": {
-          "left": {
-            "min": 0
-          }
-        }
-      }
-    },
-    {
-      "type": "metric",
-      "x": 0,
-      "y": 6,
-      "width": 12,
-      "height": 6,
-      "properties": {
-        "metrics": [
-          ["AWS/Lambda", "Duration", {"stat": "Average"}, {"dimensions": {"FunctionName": "gdrive-webhook-webhook-handler-dev"}}],
-          ["...", {"stat": "p99"}]
-        ],
-        "view": "timeSeries",
-        "stacked": false,
-        "region": "us-east-1",
-        "title": "Lambda Performance (ms)",
-        "period": 300
-      }
-    },
-    {
-      "type": "metric",
-      "x": 12,
-      "y": 6,
-      "width": 12,
-      "height": 6,
-      "properties": {
-        "metrics": [
-          ["GoogleDriveWebhook", "ChannelsCreated", {"stat": "Sum"}],
-          [".", "ChannelsRenewed", {"stat": "Sum"}],
-          [".", "ChannelRenewalErrors", {"stat": "Sum"}]
-        ],
-        "view": "timeSeries",
-        "stacked": false,
-        "region": "us-east-1",
-        "title": "Channel Management",
-        "period": 3600
-      }
-    },
-    {
-      "type": "log",
-      "x": 0,
-      "y": 12,
       "width": 24,
+      "height": 1,
+      "properties": {
+        "markdown": "# Customer Care Call Processing Pipeline Dashboard"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 1,
+      "width": 8,
       "height": 6,
       "properties": {
-        "query": "SOURCE '/aws/lambda/gdrive-webhook-webhook-handler-dev'\n| fields @timestamp, @message\n| filter @message like /ERROR/ or @message like /WARN/\n| sort @timestamp desc\n| limit 20",
-        "region": "us-east-1",
-        "stacked": false,
-        "title": "Recent Errors and Warnings",
-        "view": "table"
+        "title": "Call Processing Volume",
+        "metrics": [
+          ["CallProcessing", "CallsReceived", { "stat": "Sum", "label": "Received" }],
+          [".", "CallsCompleted", { "stat": "Sum", "label": "Completed" }],
+          [".", "CallsFailed", { "stat": "Sum", "label": "Failed" }]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "view": "timeSeries",
+        "stacked": false
+      }
+    },
+    {
+      "type": "metric",
+      "x": 8,
+      "y": 1,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "title": "Processing Times (seconds)",
+        "metrics": [
+          ["CallProcessing", "TranscriptionTime", { "stat": "Average", "label": "Transcription" }],
+          [".", "SummarizationTime", { "stat": "Average", "label": "Summarization" }],
+          [".", "TotalProcessingTime", { "stat": "Average", "label": "Total" }]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 16,
+      "y": 1,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "title": "Success Rate",
+        "metrics": [
+          ["CallProcessing", "SuccessRate", { "stat": "Average", "label": "Success %" }]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "view": "gauge",
+        "yAxis": {
+          "left": { "min": 0, "max": 100 }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 7,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Lambda Invocations",
+        "metrics": [
+          ["AWS/Lambda", "Invocations", "FunctionName", "${project_name}-webhook-handler-${environment}"],
+          ["...", "${project_name}-start-transcribe-${environment}"],
+          ["...", "${project_name}-process-transcript-${environment}"],
+          ["...", "${project_name}-generate-summary-${environment}"],
+          ["...", "${project_name}-save-summary-${environment}"]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "stat": "Sum",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 7,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Lambda Errors",
+        "metrics": [
+          ["AWS/Lambda", "Errors", "FunctionName", "${project_name}-webhook-handler-${environment}"],
+          ["...", "${project_name}-start-transcribe-${environment}"],
+          ["...", "${project_name}-process-transcript-${environment}"],
+          ["...", "${project_name}-generate-summary-${environment}"],
+          ["...", "${project_name}-save-summary-${environment}"]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "stat": "Sum",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 13,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Step Functions Executions",
+        "metrics": [
+          ["AWS/States", "ExecutionsStarted", "StateMachineArn", "${state_machine_arn}", { "label": "Started" }],
+          [".", "ExecutionsSucceeded", ".", ".", { "label": "Succeeded" }],
+          [".", "ExecutionsFailed", ".", ".", { "label": "Failed" }]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "stat": "Sum",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 13,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Step Functions Execution Time",
+        "metrics": [
+          ["AWS/States", "ExecutionTime", "StateMachineArn", "${state_machine_arn}", { "stat": "Average", "label": "Average" }],
+          ["...", { "stat": "p95", "label": "p95" }],
+          ["...", { "stat": "Maximum", "label": "Maximum" }]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 19,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "title": "API Gateway Requests",
+        "metrics": [
+          ["AWS/ApiGateway", "Count", "ApiName", "${project_name}-api-${environment}"]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "stat": "Sum",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 8,
+      "y": 19,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "title": "API Gateway Latency",
+        "metrics": [
+          ["AWS/ApiGateway", "Latency", "ApiName", "${project_name}-api-${environment}", { "stat": "Average", "label": "Average" }],
+          ["...", { "stat": "p95", "label": "p95" }]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 16,
+      "y": 19,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "title": "API Gateway Errors",
+        "metrics": [
+          ["AWS/ApiGateway", "4XXError", "ApiName", "${project_name}-api-${environment}"],
+          [".", "5XXError", ".", "."]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "stat": "Sum",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 25,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Amazon Transcribe Jobs",
+        "metrics": [
+          ["CallProcessing", "TranscribeJobsStarted", { "stat": "Sum", "label": "Started" }],
+          [".", "TranscribeJobsCompleted", { "stat": "Sum", "label": "Completed" }],
+          [".", "TranscribeJobsFailed", { "stat": "Sum", "label": "Failed" }]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 25,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Amazon Bedrock (Claude 3.5)",
+        "metrics": [
+          ["CallProcessing", "BedrockCalls", { "stat": "Sum", "label": "Calls" }],
+          [".", "BedrockErrors", { "stat": "Sum", "label": "Errors" }],
+          [".", "BedrockLatency", { "stat": "Average", "label": "Latency (ms)" }]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 31,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "DynamoDB Read/Write",
+        "metrics": [
+          ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${project_name}-call-summaries-${environment}"],
+          [".", "ConsumedWriteCapacityUnits", ".", "."]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "stat": "Sum",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 31,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "DynamoDB Latency",
+        "metrics": [
+          ["AWS/DynamoDB", "SuccessfulRequestLatency", "TableName", "${project_name}-call-summaries-${environment}", "Operation", "GetItem"],
+          ["...", "PutItem"],
+          ["...", "Query"]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "stat": "Average",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 37,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "WebSocket Connections",
+        "metrics": [
+          ["CallProcessing", "WebSocketConnections", { "stat": "Sum", "label": "Active Connections" }],
+          [".", "WebSocketMessages", { "stat": "Sum", "label": "Messages Sent" }]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 37,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Real-time Notifications",
+        "metrics": [
+          ["CallProcessing", "NotificationsSent", { "stat": "Sum", "label": "Sent" }],
+          [".", "NotificationsFailed", { "stat": "Sum", "label": "Failed" }]
+        ],
+        "period": 300,
+        "region": "${AWS::Region}",
+        "view": "timeSeries"
       }
     }
   ]

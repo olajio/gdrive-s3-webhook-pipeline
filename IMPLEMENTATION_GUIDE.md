@@ -2,15 +2,30 @@
 
 Your quick-start, end-to-end checklist to deploy the AI-powered call transcription and summarization pipeline.
 
-**📖 For comprehensive step-by-step instructions including detailed prerequisite setup, see [WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md)**
+**📖 For comprehensive step-by-step instructions including detailed prerequisite setup, see [SETUP_GUIDE.md](SETUP_GUIDE.md)**
 
 **🏗️ For complete system architecture, see [ARCHITECTURE.md](ARCHITECTURE.md)**
 
 **📑 For detailed implementation stages, see [02_build_process_steps.md](02_build_process_steps.md)**
 
+---
+
+## Quick Start Overview
+
+| Step | Description | Time |
+|------|-------------|------|
+| 1 | Clone repository | 1 min |
+| 2 | Configure environment | 5 min |
+| 3 | Google Cloud setup | 15 min |
+| 4 | Deploy infrastructure | 10 min |
+| 5 | Register webhook | 5 min |
+| 6 | Validate deployment | 5 min |
+
+---
+
 ## 0) Prerequisites
 
-**⚠️ IMPORTANT:** If you're setting up for the first time, see [WEBHOOK_IMPLEMENTATION.md Sections 2 & 3](WEBHOOK_IMPLEMENTATION.md#2-prerequisites-and-environment-setup) for detailed instructions.
+**⚠️ IMPORTANT:** If you're setting up for the first time, see [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed instructions.
 
 **Quick Checklist (assumes tools are already installed):**
 
@@ -20,217 +35,352 @@ Your quick-start, end-to-end checklist to deploy the AI-powered call transcripti
 - Cognito, Secrets Manager, CloudWatch, SNS, IAM
 
 **Development Tools:**
-- AWS CLI v2, AWS CDK, Python 3.11+, Node.js 18+
-- Terraform ≥ 1.0, zip, jq, make
+- AWS CLI v2 configured with appropriate credentials
+- Python 3.11+
+- Terraform ≥ 1.0
+- zip, jq, make
 
 **Google Cloud:**
 - Google Cloud project with Drive API enabled
 - Service Account created with JSON key downloaded
+- OAuth consent screen configured
 
-**GitHub Actions Secrets:**
-- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
-- `S3_BUCKET_NAME`, `GDRIVE_FOLDER_ID`, `ALERT_EMAIL`
+**📚 Detailed Setup Guide:** See [SETUP_GUIDE.md Section 1: Prerequisites](SETUP_GUIDE.md#1-prerequisites) for:
+- Development tools installation
+- AWS CLI configuration
+- Python virtual environment setup
+- Project structure overview
 
-**📚 Detailed Setup Guide:** See [WEBHOOK_IMPLEMENTATION.md Section 2: Prerequisites](WEBHOOK_IMPLEMENTATION.md#2-prerequisites-and-environment-setup) for:
-- Development tools installation (Node.js, Python, AWS CLI, CDK, Google Cloud SDK)
-- Version control setup
-- Python virtual environment configuration
-- Project structure creation
+---
 
-**🔐 Google Cloud Setup Guide:** See [WEBHOOK_IMPLEMENTATION.md Section 3: Google Cloud Platform Setup](WEBHOOK_IMPLEMENTATION.md#3-google-cloud-platform-setup) for:
-- Creating Google Cloud Project
-- Enabling Google Drive API
-- Creating and configuring Service Account
-- Securing service account keys
-- Creating and sharing Google Drive folders
-- Testing service account access
+## 1) Clone Repository
 
-## 1) Clone
 ```bash
 git clone https://github.com/olajio/customer-care-call-processor.git
 cd customer-care-call-processor
 ```
 
-## 2) Local configuration
-1. Copy env template:
+---
+
+## 2) Local Configuration
+
+1. Create environment file:
    ```bash
-   cp .env.example .env
+   cat > .env << 'EOF'
+   # Environment
+   ENVIRONMENT=dev
+   AWS_REGION=us-east-1
+   
+   # S3
+   S3_BUCKET_NAME=customer-care-calls-dev-YOUR-UNIQUE-ID
+   
+   # Google Drive
+   GDRIVE_FOLDER_ID=your-folder-id-here
+   
+   # Notifications
+   ALERT_EMAIL=your-email@example.com
+   EOF
    ```
-2. Edit `.env` with your values (S3 bucket, folder ID, alert email, region, environment).
-3. Optional: adjust per-env YAML in `config/dev.yaml` and `config/prod.yaml`.
 
-## 3) Google setup (service account + folder share)
+2. Edit `.env` with your actual values.
 
-**⚠️ For first-time setup with detailed step-by-step instructions, see [WEBHOOK_IMPLEMENTATION.md Section 3](WEBHOOK_IMPLEMENTATION.md#3-google-cloud-platform-setup)**
+3. Optional: Adjust environment-specific settings in `config/dev.yaml` and `config/prod.yaml`.
 
-**Quick Steps (assumes you've read the detailed guide):**
-1. In Google Cloud Console, create a Service Account (Viewer role is enough for reads).
-   - **Detailed instructions:** [Section 3.3](WEBHOOK_IMPLEMENTATION.md#33-create-service-account)
-2. Create & download the JSON key.
-   - **Detailed instructions with security warnings:** [Section 3.4](WEBHOOK_IMPLEMENTATION.md#34-generate-and-secure-service-account-key)
-3. Share the target Google Drive folder with the service account email as **Viewer**.
-   - **Detailed instructions:** [Section 3.5](WEBHOOK_IMPLEMENTATION.md#35-create-and-share-google-drive-folder)
-4. **💡 Recommended:** Test service account access before proceeding.
-   - **Test script and validation:** [Section 3.6](WEBHOOK_IMPLEMENTATION.md#36-test-service-account-access)
-5. Store creds + webhook token in AWS Secrets Manager via helper script:
+---
+
+## 3) Google Cloud Setup
+
+**⚠️ For first-time setup with detailed step-by-step instructions, see [SETUP_GUIDE.md Section 2](SETUP_GUIDE.md#2-google-cloud-setup)**
+
+**Quick Steps:**
+
+1. **Create Google Cloud Project** (if needed):
    ```bash
-   ./scripts/setup_google_auth.sh /path/to/service-account-key.json
+   gcloud projects create customer-care-processor --name="Call Processor"
+   gcloud config set project customer-care-processor
    ```
-   This writes secrets:
-   - `gdrive-webhook-credentials` (service account JSON)
-   - `gdrive-webhook-config` (webhook token)
 
-## 4) AWS sanity checks
-```bash
-aws sts get-caller-identity
-```
-Ensure `S3_BUCKET_NAME` in `.env` is unique.
+2. **Enable Google Drive API**:
+   ```bash
+   gcloud services enable drive.googleapis.com
+   ```
 
-## 5) Deploy (one command)
+3. **Create Service Account**:
+   ```bash
+   gcloud iam service-accounts create call-processor-sa \
+       --display-name="Call Processor Service Account"
+   
+   gcloud iam service-accounts keys create credentials.json \
+       --iam-account=call-processor-sa@YOUR_PROJECT.iam.gserviceaccount.com
+   ```
+
+4. **Share Google Drive folder** with the service account email as **Viewer**.
+
+5. **Store credentials in AWS Secrets Manager**:
+   ```bash
+   ./scripts/setup_google_auth.sh credentials.json
+   ```
+
+---
+
+## 4) Deploy Infrastructure
+
+**Option A: One-Command Deploy**
 ```bash
 ./scripts/deploy.sh
 ```
-What it does: packages Lambda code, runs Terraform (init/plan/apply), updates both Lambdas, invokes channel renewal once to create the initial webhook channel. Outputs the webhook URL, Lambda names, S3 bucket.
 
-## 6) Manual deploy (if you prefer explicit steps)
+**Option B: Manual Steps**
 ```bash
+# 1. Initialize Terraform
 cd terraform
 terraform init
+
+# 2. Plan deployment
 terraform plan \
   -var="environment=dev" \
   -var="s3_bucket_name=$S3_BUCKET_NAME" \
   -var="gdrive_folder_id=$GDRIVE_FOLDER_ID" \
   -var="alert_email=$ALERT_EMAIL" \
   -out=tfplan
+
+# 3. Apply
 terraform apply tfplan
+
+# 4. Package Lambda code
+cd ..
+./scripts/package_lambdas.sh
+
+# 5. Deploy Lambda code
+aws lambda update-function-code \
+  --function-name $(terraform -chdir=terraform output -raw webhook_handler_function_name) \
+  --zip-file fileb://dist/webhook.zip
+
+# Repeat for other Lambda functions...
 ```
-Package & push Lambda code:
+
+---
+
+## 5) Register Google Drive Webhook
+
 ```bash
-cd ../src/lambda
-pip install -r ../../requirements.txt -t . --upgrade
-zip -r ../../lambda_package.zip . -x "*.pyc" -x "__pycache__/*" -x "*.dist-info/*"
-cd ../..
-aws lambda update-function-code --function-name $(terraform -chdir=terraform output -raw webhook_handler_function_name) --zip-file fileb://lambda_package.zip
-aws lambda update-function-code --function-name $(terraform -chdir=terraform output -raw channel_renewal_function_name) --zip-file fileb://lambda_package.zip
+python scripts/register_webhook.py \
+  --folder-id $GDRIVE_FOLDER_ID \
+  --webhook-url $(terraform -chdir=terraform output -raw webhook_url)
 ```
-Trigger initial channel creation (one time):
+
+This creates a push notification channel that watches the Google Drive folder for new files.
+
+---
+
+## 6) Validate Deployment
+
+**Test Webhook Handler:**
 ```bash
 aws lambda invoke \
-  --function-name $(terraform -chdir=terraform output -raw channel_renewal_function_name) \
-  --payload '{}' /tmp/channel_response.json
-cat /tmp/channel_response.json
+  --function-name $(terraform -chdir=terraform output -raw webhook_handler_function_name) \
+  --payload '{"headers":{"X-Goog-Resource-State":"sync"}}' \
+  /tmp/webhook_test.json
+
+cat /tmp/webhook_test.json
 ```
 
-## 7) CI/CD (GitHub Actions)
+**Check CloudWatch Logs:**
+```bash
+aws logs tail /aws/lambda/$(terraform -chdir=terraform output -raw webhook_handler_function_name) --follow
+```
+
+**Verify DynamoDB Tables:**
+```bash
+aws dynamodb list-tables
+```
+
+---
+
+## 7) Functional Test (End-to-End)
+
+1. **Upload a test audio file** (mp3, wav, m4a) to the watched Google Drive folder.
+
+2. **Monitor Step Functions** execution in AWS Console:
+   - Navigate to Step Functions → State Machines → call-processing
+   - Watch the execution progress through states
+
+3. **Verify S3 storage:**
+   ```bash
+   aws s3 ls s3://$S3_BUCKET_NAME/raw-audio/ --recursive
+   aws s3 ls s3://$S3_BUCKET_NAME/transcripts/ --recursive
+   aws s3 ls s3://$S3_BUCKET_NAME/summaries/ --recursive
+   ```
+
+4. **Check DynamoDB record:**
+   ```bash
+   aws dynamodb scan --table-name customer-care-call-summaries-dev
+   ```
+
+5. **Verify summary was generated** with status "COMPLETED".
+
+---
+
+## 8) CI/CD (GitHub Actions)
+
+Configure repository secrets:
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_REGION`
+- `S3_BUCKET_NAME`
+- `GDRIVE_FOLDER_ID`
+- `ALERT_EMAIL`
+
+Workflows:
 - Tests on push/PR: `.github/workflows/test.yml`
-- Deploy on push to `main` or manual dispatch: `.github/workflows/deploy.yml`
-Ensure repo secrets above are set.
+- Deploy on push to `main`: `.github/workflows/deploy.yml`
 
-## 8) Validate deployment
-1. Ping webhook Lambda (sync verification):
-   ```bash
-   aws lambda invoke \
-     --function-name $(terraform -chdir=terraform output -raw webhook_handler_function_name) \
-     --payload '{"headers":{"X-Goog-Resource-State":"sync","X-Goog-Channel-Token":"test"}}' \
-     /tmp/webhook_test.json
-   cat /tmp/webhook_test.json
-   ```
-2. Tail logs:
-   ```bash
-   aws logs tail /aws/lambda/$(terraform -chdir=terraform output -raw webhook_handler_function_name) --follow
-   aws logs tail /aws/lambda/$(terraform -chdir=terraform output -raw channel_renewal_function_name) --follow
-   ```
-3. Check resources:
-   ```bash
-   aws dynamodb describe-table --table-name $(terraform -chdir=terraform output -raw channels_table_name)
-   aws dynamodb describe-table --table-name $(terraform -chdir=terraform output -raw sync_log_table_name)
-   aws s3 ls s3://$(terraform -chdir=terraform output -raw s3_bucket_name)
-   ```
+---
 
-## 9) Functional test (end-to-end)
-1. Upload a test audio file (mp3, wav, m4a) to the watched Drive folder.
-2. Monitor Step Functions execution in AWS Console.
-3. Verify audio appears in S3 at `raw-audio/YYYY-MM-DD/{call-id}.ext`.
-4. Check transcript in S3 at `transcripts/YYYY-MM-DD/{call-id}-transcript.json`.
-5. Check summary in S3 at `summaries/YYYY-MM-DD/{call-id}-summary.json`.
-6. Verify DynamoDB `call-summaries` table has the record with status "COMPLETED".
-7. If frontend is deployed, verify summary appears in dashboard.
+## 9) Development Workflow
 
-## 10) Dev workflow
 ```bash
+# Install dependencies
 pip install -r requirements.txt
-make test              # unit tests
-make test-integration  # integration (needs AWS resources)
+
+# Run tests
+make test              # Unit tests
+make test-integration  # Integration tests (needs AWS)
+
+# Code quality
 make lint              # flake8/black/mypy
-make package           # build Lambda zip
+
+# Build
+make package           # Package Lambda code
 ```
 
-## 11) Operations & monitoring
-- **Dashboards**: CloudWatch dashboards for Processing Pipeline, API Performance, Cost Tracking
-- **Key Metrics**:
-  - Processing: CallsProcessed, ProcessingTime (P50/P95/P99), SuccessRate, FailureRate
-  - AI Services: TranscribeMinutes, BedrockTokens, ThrottlingEvents
-  - API: Latency, RequestCount, ErrorRate (4xx/5xx)
-  - WebSocket: ActiveConnections, MessagesSent
-- **Alarms**: High failure rates, processing timeouts, Bedrock throttling, API 5xx errors
-- **Logs**: 
-  - Lambda: `/aws/lambda/<function-name>`
-  - Step Functions: Execution history in console
-  - API Gateway: Access logs and execution logs
+---
 
-## 12) Security checklist
-- **Secrets Management**: Google service account in Secrets Manager; rotate every 90 days
-- **Encryption**: S3 (AES-256/KMS), DynamoDB (KMS), TLS 1.2+ for all APIs
-- **Authentication**: Cognito JWT tokens for API/WebSocket; custom token for webhooks
-- **IAM**: Least-privilege roles for all Lambda functions (see CDK/Terraform)
-- **Network**: API Gateway WAF protection; CORS properly configured
-- **Audit**: CloudTrail enabled; DynamoDB Streams for change tracking
-- **PII**: Transcribe PII redaction enabled (optional); data retention policies defined
+## 10) Operations & Monitoring
 
-## 13) Prod hardening
-- **Lambda**: Increase memory (1024MB+ for processing), configure provisioned concurrency
-- **Bedrock**: Request quota increases before go-live; implement fallback to Claude Haiku
-- **Transcribe**: Pre-configure custom vocabulary for industry terms
-- **Step Functions**: Configure dead-letter queue for failed executions
-- **Cognito**: Enable MFA for admin/supervisor accounts
-- **S3**: Lifecycle policies for Glacier archival (90 days); access logging enabled
-- **DynamoDB**: Point-in-time recovery enabled; auto-scaling configured
-- **Cost**: Set up billing alerts; reserved capacity for predictable workloads
+**CloudWatch Dashboard:**
+Navigate to CloudWatch → Dashboards → `customer-care-call-processor-dev`
 
-## 14) Troubleshooting quick hits
-- **Transcription fails**: Check audio format support; verify Transcribe quotas; review Lambda logs
-- **Summary quality poor**: Review Bedrock prompt; check transcript formatting; verify model access
-- **WebSocket silent**: Verify connection in DynamoDB; check JWT token validity; review connection Lambda logs
-- **API 401/403**: Confirm Cognito token not expired; verify user in correct group
-- **Step Functions stuck**: Check execution details in console; verify IAM permissions for each state
-- **High costs**: Monitor Transcribe minutes and Bedrock tokens; check for retry loops
-- **→ See [WEBHOOK_IMPLEMENTATION.md Section 11](WEBHOOK_IMPLEMENTATION.md#11-troubleshooting) for detailed troubleshooting**
+**Key Metrics:**
+| Category | Metrics |
+|----------|---------|
+| Processing | CallsProcessed, ProcessingTime, SuccessRate |
+| AI Services | TranscribeMinutes, BedrockTokens, ThrottlingEvents |
+| API | Latency, RequestCount, ErrorRate |
+| WebSocket | ActiveConnections, MessagesSent |
 
-## 15) Cutover plan
-1. Deploy to dev, validate with test files.
-2. Load-test with sample batch.
-3. Promote to staging; repeat checks.
-4. Set prod folder/bucket vars; deploy to prod.
-5. Trigger initial channel creation in prod (invoke channel renewal once).
-6. Monitor dashboard/alarms for 24h.
+**Alarms:**
+- High failure rate (>5% failures)
+- Processing timeout (>10 minutes)
+- Bedrock throttling
+- API 5xx errors
 
-## 16) Handy commands
+**Logs:**
 ```bash
-make logs-webhook ENVIRONMENT=dev
-make invoke-renewal ENVIRONMENT=dev
-make clean
-make destroy ENVIRONMENT=dev   # caution
+# Lambda logs
+aws logs tail /aws/lambda/<function-name> --follow
+
+# Step Functions
+# View in AWS Console → Step Functions → Executions
 ```
 
-## 17) References
-- **System Architecture**: [ARCHITECTURE.md](ARCHITECTURE.md)
-- **Complete Specification**: [case_study_file.md](case_study_file.md)
-- **User Stories & Features**: [01_features_and_stories.md](01_features_and_stories.md)
-- **Detailed Build Steps**: [02_build_process_steps.md](02_build_process_steps.md)
-- **Validation Checklists**: [03_stage_completion_checklist.md](03_stage_completion_checklist.md)
-- **Navigation Guide**: [04_navigation_guide.md](04_navigation_guide.md)
-- **Webhook Implementation**: [WEBHOOK_IMPLEMENTATION.md](WEBHOOK_IMPLEMENTATION.md)
-- **IaC**: terraform/ (Terraform) or CDK code
-- **Lambda Code**: src/lambda/
-- **Frontend**: transcribe001-frontend/
+---
+
+## 11) Security Checklist
+
+- [ ] Google service account key stored in Secrets Manager
+- [ ] S3 encryption enabled (AES-256/KMS)
+- [ ] DynamoDB encryption enabled (KMS)
+- [ ] TLS 1.2+ for all APIs
+- [ ] Cognito JWT authentication configured
+- [ ] IAM least-privilege roles applied
+- [ ] CloudTrail enabled for audit logging
+- [ ] PII redaction enabled in Transcribe (optional)
+
+---
+
+## 12) Production Hardening
+
+| Component | Recommendation |
+|-----------|----------------|
+| Lambda | Memory: 1024MB+, Provisioned concurrency |
+| Bedrock | Request quota increase, Fallback to Claude Haiku |
+| Transcribe | Custom vocabulary for industry terms |
+| Step Functions | Dead-letter queue for failures |
+| Cognito | Enable MFA for admin accounts |
+| S3 | Lifecycle policies for archival, Access logging |
+| DynamoDB | Point-in-time recovery, Auto-scaling |
+
+---
+
+## 13) Troubleshooting Quick Reference
+
+| Issue | Check |
+|-------|-------|
+| Transcription fails | Audio format, Transcribe quotas, Lambda logs |
+| Summary quality poor | Bedrock prompt, Transcript format, Model access |
+| WebSocket silent | DynamoDB connections, JWT validity, Lambda logs |
+| API 401/403 | Cognito token, User group membership |
+| Step Functions stuck | Execution details, IAM permissions |
+| High costs | Transcribe minutes, Bedrock tokens, Retry loops |
+
+**→ See [SETUP_GUIDE.md Section 10: Troubleshooting](SETUP_GUIDE.md#10-troubleshooting) for detailed solutions**
+
+---
+
+## 14) Cutover Plan
+
+1. Deploy to dev, validate with test files
+2. Load-test with sample batch (10-50 files)
+3. Promote to staging; repeat validation
+4. Update prod environment variables
+5. Deploy to production
+6. Register production webhook
+7. Monitor dashboard/alarms for 24 hours
+
+---
+
+## 15) Handy Commands
+
+```bash
+# View logs
+make logs-webhook ENVIRONMENT=dev
+
+# Invoke functions manually
+aws lambda invoke --function-name <function-name> --payload '{}' output.json
+
+# Clean build artifacts
+make clean
+
+# Destroy infrastructure (CAUTION!)
+make destroy ENVIRONMENT=dev
 ```
+
+---
+
+## 16) Documentation References
+
+| Document | Description |
+|----------|-------------|
+| [SETUP_GUIDE.md](SETUP_GUIDE.md) | Complete deployment walkthrough |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture and design |
+| [case_study_file.md](case_study_file.md) | Project requirements and spec |
+| [01_features_and_stories.md](01_features_and_stories.md) | User stories and features |
+| [02_build_process_steps.md](02_build_process_steps.md) | Detailed build process |
+| [03_stage_completion_checklist.md](03_stage_completion_checklist.md) | Validation checklists |
+| [04_navigation_guide.md](04_navigation_guide.md) | Project navigation |
+
+---
+
+## 17) Code References
+
+| Path | Description |
+|------|-------------|
+| `src/lambda/webhook/` | Webhook handler (Google Drive) |
+| `src/lambda/processing/` | Pipeline functions (Transcribe, Bedrock) |
+| `src/lambda/api/` | REST API endpoints |
+| `src/lambda/websocket/` | WebSocket handlers |
+| `terraform/` | Infrastructure as Code |
+| `stepfunctions/` | State machine definition |
+| `scripts/` | Deployment and utility scripts |
+| `tests/` | Unit and integration tests |

@@ -1,3 +1,7 @@
+# ==================================================
+# Customer Care Call Processing System - IAM Roles & Policies
+# ==================================================
+
 # Lambda execution role
 resource "aws_iam_role" "lambda_execution" {
   name = "${var.project_name}-lambda-role-${var.environment}"
@@ -12,12 +16,20 @@ resource "aws_iam_role" "lambda_execution" {
       }
     }]
   })
+
+  tags = var.tags
 }
 
-# Lambda basic execution policy
+# Lambda basic execution policy (CloudWatch Logs)
 resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   role       = aws_iam_role.lambda_execution.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# X-Ray tracing policy
+resource "aws_iam_role_policy_attachment" "lambda_xray" {
+  role       = aws_iam_role.lambda_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
 }
 
 # Custom policy for Lambda functions
@@ -28,6 +40,7 @@ resource "aws_iam_role_policy" "lambda_custom" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      # S3 permissions
       {
         Effect = "Allow"
         Action = [
@@ -36,39 +49,83 @@ resource "aws_iam_role_policy" "lambda_custom" {
           "s3:HeadObject",
           "s3:DeleteObject"
         ]
-        Resource = "${aws_s3_bucket.gdrive_sync.arn}/*"
+        Resource = "${aws_s3_bucket.call_storage.arn}/*"
       },
       {
         Effect = "Allow"
         Action = [
           "s3:ListBucket"
         ]
-        Resource = aws_s3_bucket.gdrive_sync.arn
+        Resource = aws_s3_bucket.call_storage.arn
       },
+      # DynamoDB permissions
       {
         Effect = "Allow"
         Action = [
           "dynamodb:GetItem",
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
           "dynamodb:Query",
           "dynamodb:Scan"
         ]
         Resource = [
-          aws_dynamodb_table.gdrive_channels.arn,
-          aws_dynamodb_table.gdrive_s3_sync_log.arn,
-          "${aws_dynamodb_table.gdrive_s3_sync_log.arn}/index/*"
+          aws_dynamodb_table.call_summaries.arn,
+          "${aws_dynamodb_table.call_summaries.arn}/index/*",
+          aws_dynamodb_table.websocket_connections.arn,
+          "${aws_dynamodb_table.websocket_connections.arn}/index/*",
+          aws_dynamodb_table.webhook_channels.arn,
+          "${aws_dynamodb_table.webhook_channels.arn}/index/*"
         ]
       },
+      # Secrets Manager permissions
       {
         Effect = "Allow"
         Action = [
           "secretsmanager:GetSecretValue"
         ]
         Resource = [
-          "arn:aws:secretsmanager:${var.aws_region}:*:secret:gdrive-webhook-*"
+          "arn:aws:secretsmanager:${var.aws_region}:*:secret:${var.google_credentials_secret_name}*"
         ]
       },
+      # Amazon Transcribe permissions
+      {
+        Effect = "Allow"
+        Action = [
+          "transcribe:StartTranscriptionJob",
+          "transcribe:GetTranscriptionJob",
+          "transcribe:ListTranscriptionJobs"
+        ]
+        Resource = "*"
+      },
+      # Amazon Bedrock permissions
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+        ]
+        Resource = [
+          "arn:aws:bedrock:${var.aws_region}::foundation-model/anthropic.claude-*"
+        ]
+      },
+      # Step Functions permissions
+      {
+        Effect = "Allow"
+        Action = [
+          "states:StartExecution"
+        ]
+        Resource = aws_sfn_state_machine.call_processing.arn
+      },
+      # API Gateway Management API (for WebSocket)
+      {
+        Effect = "Allow"
+        Action = [
+          "execute-api:ManageConnections"
+        ]
+        Resource = "${aws_apigatewayv2_api.websocket.execution_arn}/*"
+      },
+      # SNS permissions for alerts
       {
         Effect = "Allow"
         Action = [
@@ -76,6 +133,7 @@ resource "aws_iam_role_policy" "lambda_custom" {
         ]
         Resource = aws_sns_topic.alerts.arn
       },
+      # CloudWatch Metrics
       {
         Effect = "Allow"
         Action = [
@@ -83,6 +141,7 @@ resource "aws_iam_role_policy" "lambda_custom" {
         ]
         Resource = "*"
       },
+      # CloudWatch Logs
       {
         Effect = "Allow"
         Action = [
@@ -111,6 +170,8 @@ resource "aws_iam_role" "api_gateway_cloudwatch" {
       }
     }]
   })
+
+  tags = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch" {
