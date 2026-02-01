@@ -21,12 +21,12 @@ This project adheres to a code of conduct that all contributors are expected to 
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/your-username/data-pipeline.git
-   cd data-pipeline
+   git clone https://github.com/your-username/gdrive-s3-webhook-pipeline.git
+   cd gdrive-s3-webhook-pipeline
    ```
 3. **Add upstream remote**:
    ```bash
-   git remote add upstream https://github.com/original-owner/data-pipeline.git
+   git remote add upstream https://github.com/olajio/gdrive-s3-webhook-pipeline.git
    ```
 
 ## Development Setup

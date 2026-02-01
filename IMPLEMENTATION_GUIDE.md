@@ -30,8 +30,8 @@ Your one-stop, end-to-end checklist to deploy and operate the production-ready p
 
 ## 1) Clone
 ```bash
-git clone https://github.com/olajio/data-pipeline.git
-cd data-pipeline
+git clone https://github.com/olajio/gdrive-s3-webhook-pipeline.git
+cd gdrive-s3-webhook-pipeline
 ```
 
 ## 2) Local configuration
