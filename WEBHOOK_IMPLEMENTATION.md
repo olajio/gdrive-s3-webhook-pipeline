@@ -255,8 +255,8 @@ If you haven't already created a repository:
 
 ```bash
 # Create a new directory for your project
-mkdir gdrive-s3-webhook-pipeline
-cd gdrive-s3-webhook-pipeline
+mkdir customer-care-call-processor
+cd customer-care-call-processor
 
 # Initialize Git repository
 git init
@@ -309,10 +309,10 @@ git add .
 git commit -m "Initial commit"
 
 # Create GitHub repository (using GitHub CLI if installed)
-gh repo create gdrive-s3-webhook-pipeline --public --source=. --remote=origin
+gh repo create customer-care-call-processor --public --source=. --remote=origin
 
 # Or manually: Create repo on github.com, then:
-# git remote add origin https://github.com/YOUR-USERNAME/gdrive-s3-webhook-pipeline.git
+# git remote add origin https://github.com/YOUR-USERNAME/customer-care-call-processor.git
 # git branch -M main
 # git push -u origin main
 ```
@@ -339,7 +339,7 @@ For production projects, enable branch protection on GitHub:
 
 ```bash
 # Navigate to your project directory
-cd gdrive-s3-webhook-pipeline
+cd customer-care-call-processor
 
 # Create directory structure
 mkdir -p src/lambda/{webhook_handler,channel_renewal}
@@ -357,7 +357,7 @@ touch terraform/README.md
 
 Your project structure should now look like:
 ```
-gdrive-s3-webhook-pipeline/
+customer-care-call-processor/
 ├── .gitignore
 ├── README.md
 ├── config/
@@ -505,7 +505,7 @@ Google Cloud projects are containers that organize your cloud resources. Think o
    - Click **"New Project"** button
    
 3. **Configure Project Details**
-   - **Project Name**: `gdrive-s3-webhook-pipeline`
+   - **Project Name**: `customer-care-call-processor`
    - **Project ID**: `gdrive-s3-pipeline-XXXXX` (auto-generated, but you can customize)
      - 💡 **Tip:** Project IDs must be globally unique across all Google Cloud
      - 💡 **Tip:** Write down your Project ID - you'll need it later!
@@ -650,10 +650,10 @@ The service account key is a JSON file containing credentials that allow your ap
    - **Move it immediately to a secure location:**
      ```bash
      # Move to your project directory (which is in .gitignore)
-     mv ~/Downloads/gdrive-s3-pipeline-*.json ~/gdrive-s3-webhook-pipeline/service-account-key.json
+     mv ~/Downloads/gdrive-s3-pipeline-*.json ~/customer-care-call-processor/service-account-key.json
      
      # Set restrictive permissions
-     chmod 600 ~/gdrive-s3-webhook-pipeline/service-account-key.json
+     chmod 600 ~/customer-care-call-processor/service-account-key.json
      ```
 
 ⚠️ **CRITICAL SECURITY WARNINGS:**
@@ -2223,7 +2223,7 @@ This section covers common problems you might encounter and their solutions.
 
 3. **Run from project root:**
    ```bash
-   cd gdrive-s3-webhook-pipeline
+   cd customer-care-call-processor
    python3 test_google_drive_auth.py
    ```
 
@@ -2401,7 +2401,7 @@ Now that your pipeline is built and tested:
 ### Support
 
 For questions or issues:
-- **Repository Issues:** [https://github.com/olajio/gdrive-s3-webhook-pipeline/issues](https://github.com/olajio/gdrive-s3-webhook-pipeline/issues)
+- **Repository Issues:** [https://github.com/olajio/customer-care-call-processor/issues](https://github.com/olajio/customer-care-call-processor/issues)
 - **Troubleshooting Guide:** See Section 11 above
 - **AWS Support:** [https://console.aws.amazon.com/support](https://console.aws.amazon.com/support)
 - **Google Cloud Support:** [https://console.cloud.google.com/support](https://console.cloud.google.com/support)

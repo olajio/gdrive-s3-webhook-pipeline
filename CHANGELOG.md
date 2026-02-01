@@ -67,5 +67,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secrets Manager for credential storage
 - HTTPS-only communication
 
-[Unreleased]: https://github.com/olajio/gdrive-s3-webhook-pipeline/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/olajio/gdrive-s3-webhook-pipeline/releases/tag/v1.0.0
+[Unreleased]: https://github.com/olajio/customer-care-call-processor/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/olajio/customer-care-call-processor/releases/tag/v1.0.0

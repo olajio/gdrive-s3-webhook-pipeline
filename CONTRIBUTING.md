@@ -21,12 +21,12 @@ This project adheres to a code of conduct that all contributors are expected to 
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/your-username/gdrive-s3-webhook-pipeline.git
-   cd gdrive-s3-webhook-pipeline
+   git clone https://github.com/your-username/customer-care-call-processor.git
+   cd customer-care-call-processor
    ```
 3. **Add upstream remote**:
    ```bash
-   git remote add upstream https://github.com/olajio/gdrive-s3-webhook-pipeline.git
+   git remote add upstream https://github.com/olajio/customer-care-call-processor.git
    ```
 
 ## Development Setup

@@ -47,8 +47,8 @@ Your quick-start, end-to-end checklist to deploy the AI-powered call transcripti
 
 ## 1) Clone
 ```bash
-git clone https://github.com/olajio/gdrive-s3-webhook-pipeline.git
-cd gdrive-s3-webhook-pipeline
+git clone https://github.com/olajio/customer-care-call-processor.git
+cd customer-care-call-processor
 ```
 
 ## 2) Local configuration
