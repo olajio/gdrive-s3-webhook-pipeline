@@ -198,21 +198,48 @@ This will:
 
 **Google Cloud requires projects to have an 'environment' tag for proper resource management.**
 
-After creating your project, add an environment tag:
+There are two ways to add an environment tag:
+
+**Option 1: Using Google Cloud Console (Recommended for First-Time Setup)**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Navigate to **"IAM & Admin"** → **"Tags"**
+3. If the `environment` tag key doesn't exist:
+   - Click **"Create Tag Key"**
+   - Key name: `environment`
+   - Click **"Create"**
+4. Select the `environment` tag key
+5. Click **"Manage tag values"** or **"Create Tag Value"**
+6. Enter value: `Development` (or `Test`, `Staging`, `Production`)
+7. Click **"Create"**
+8. Go to **"Manage resources"** and select your project
+9. Click **"Tags"** on the right panel
+10. Select the `environment` tag and value `Development`
+11. Click **"Update"**
+
+**Option 2: Using gcloud CLI (After Tag Key is Set Up)**
+
+Once the tag key exists, use the CLI:
 
 ```bash
-# Set your project first
+# Set your project
 gcloud config set project YOUR_PROJECT_ID
 
-# Create the environment tag (choose one: Development, Test, Staging, or Production)
+# List available tag keys
+gcloud resource-manager tags keys list
+
+# List tag values for the 'environment' key
+gcloud resource-manager tags values list --parent=tagKeys/TAGKEY_ID
+
+# Bind tag value to project
 gcloud resource-manager tags bindings create \
-  --tag-binding=environment=Development \
-  --parent=projects/YOUR_PROJECT_ID
+  --parent=projects/YOUR_PROJECT_ID \
+  --tag=environment/Development
 ```
 
 **Tag Options:**
 - `Development` - Development/testing environments
-- `Test` - QA and testing environments
+- `Test` - QA and testing environments  
 - `Staging` - Pre-production staging
 - `Production` - Production environments
 
@@ -222,8 +249,9 @@ gcloud resource-manager tags bindings list --parent=projects/YOUR_PROJECT_ID
 ```
 
 **Common Issues:**
-- **Error: "Tag not found"** → The tag may need to be created via Google Cloud Console first
-- **Error: "Permission denied"** → Ensure your account has "Owner" role on the project
+- **Tag key doesn't exist** → Create it first via Google Cloud Console (Option 1)
+- **Permission denied** → Ensure your account has "Owner" or "Tag Admin" role
+- **Unrecognized arguments error** → Tag key may not be set up; use Console first (Option 1)
 
 ### 2.5 Enable Required APIs
 

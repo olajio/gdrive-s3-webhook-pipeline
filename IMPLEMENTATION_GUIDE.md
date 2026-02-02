@@ -119,12 +119,19 @@ cd customer-care-call-processor
    ```
 
 3. **Add Environment Tag** (required by Google Cloud):
-   ```bash
-   # Choose tag value: Development, Test, Staging, or Production
-   gcloud resource-manager tags bindings create \
-     --tag-binding=environment=Development \
-     --parent=projects/customer-care-processor
-   ```
+   - **Option A (Recommended):** Use Google Cloud Console
+     1. Go to IAM & Admin → Tags
+     2. Create or select `environment` tag key
+     3. Create tag value: `Development`
+     4. Go to Manage Resources, select project
+     5. Add the `environment=Development` tag
+   
+   - **Option B:** Use gcloud CLI (requires tag key to exist first)
+     ```bash
+     gcloud resource-manager tags bindings create \
+       --parent=projects/customer-care-processor \
+       --tag=environment/Development
+     ```
 
 4. **Enable Google Drive API**:
    ```bash

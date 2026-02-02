@@ -221,10 +221,19 @@ gcloud --version  # Should show Google Cloud SDK version
    - Link billing account
 
 4. **Add Environment Tag** (required by Google Cloud):
+   
+   **Easiest Method: Use Google Cloud Console**
+   - Navigate to "IAM & Admin" → "Tags"
+   - Create `environment` tag key if it doesn't exist
+   - Create tag value: `Development` (or Test, Staging, Production)
+   - Go to "Manage Resources" and select your project
+   - Click "Tags" and add `environment=Development`
+   
+   **Alternative: Use gcloud CLI (after tag key is set up)**
    ```bash
    gcloud resource-manager tags bindings create \
-     --tag-binding=environment=Development \
-     --parent=projects/YOUR_PROJECT_ID
+     --parent=projects/YOUR_PROJECT_ID \
+     --tag=environment/Development
    ```
    
    **Tag Options:** Development, Test, Staging, or Production
