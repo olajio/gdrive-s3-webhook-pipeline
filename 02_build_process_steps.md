@@ -232,9 +232,10 @@ gcloud --version  # Should show Google Cloud SDK version
    **Alternative: Use gcloud CLI (after tag key is set up)**
    ```bash
    gcloud resource-manager tags bindings create \
-     --parent=projects/YOUR_PROJECT_ID \
-     --tag=environment/Development
+     --tag-value=tagValues/TAGVALUE_ID \
+     --parent=//cloudresourcemanager.googleapis.com/projects/YOUR_PROJECT_ID
    ```
+   > See [Attaching tags to resources](https://cloud.google.com/resource-manager/docs/tags/tags-creating-and-managing#attaching) for the full command reference.
    
    **Tag Options:** Development, Test, Staging, or Production
 
@@ -250,7 +251,7 @@ gcloud --version  # Should show Google Cloud SDK version
 - Billing enabled
 - Environment tag created:
   ```bash
-  gcloud resource-manager tags bindings list --parent=projects/YOUR_PROJECT_ID
+  gcloud resource-manager tags bindings list --parent=//cloudresourcemanager.googleapis.com/projects/YOUR_PROJECT_ID
   ```
 - Project set as active in gcloud CLI
 

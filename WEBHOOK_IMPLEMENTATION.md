@@ -547,9 +547,11 @@ Google Cloud projects are containers that organize your cloud resources. Think o
    
    ```bash
    gcloud resource-manager tags bindings create \
-     --parent=projects/gdrive-s3-pipeline-XXXXX \
-     --tag=environment/Development
+     --tag-value=tagValues/TAGVALUE_ID \
+     --parent=//cloudresourcemanager.googleapis.com/projects/gdrive-s3-pipeline-XXXXX
    ```
+   > See [Attaching tags to resources](https://cloud.google.com/resource-manager/docs/tags/tags-creating-and-managing#attaching) for the full command reference.
+   > See [Listing tags](https://cloud.google.com/resource-manager/docs/tags/tags-creating-and-managing#listing_tags) for how to find your tag key and value IDs.
    
    **Tag Values:**
    - `Development` - Development/testing environments
@@ -569,7 +571,7 @@ gcloud config set project gdrive-s3-pipeline-XXXXX  # Use your actual project ID
 gcloud projects describe gdrive-s3-pipeline-XXXXX
 
 # Verify tag was created
-gcloud resource-manager tags bindings list --parent=projects/gdrive-s3-pipeline-XXXXX
+gcloud resource-manager tags bindings list --parent=//cloudresourcemanager.googleapis.com/projects/gdrive-s3-pipeline-XXXXX
 ```
 
 **Note:** If you get "You do not currently have an active account selected", run `gcloud auth login` first.

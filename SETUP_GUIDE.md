@@ -148,37 +148,7 @@ pip install -r requirements.txt
 4. Click "Create"
 5. Note the Project ID (shown on the project details page)
 
-### 2.2 Add Environment Tag to Project
-
-**Google Cloud requires projects to have an 'environment' tag for proper resource management.**
-
-After creating the project, add an environment tag:
-
-```bash
-# First, authenticate if you haven't already
-gcloud auth login
-
-# Set your project
-gcloud config set project YOUR_PROJECT_ID
-
-# Create the environment tag (choose one: Development, Test, Staging, or Production)
-gcloud resource-manager tags bindings create \
-  --tag-binding=environment=Development \
-  --parent=projects/YOUR_PROJECT_ID
-```
-
-**Tag Options:**
-- `Development` - Development/testing environments
-- `Test` - QA and testing environments
-- `Staging` - Pre-production staging
-- `Production` - Production environments
-
-**Verify the tag was created:**
-```bash
-gcloud resource-manager tags bindings list --parent=projects/YOUR_PROJECT_ID
-```
-
-### 2.3 Authenticate with Google Cloud
+### 2.2 Authenticate with Google Cloud
 
 **Before using any gcloud commands, you must authenticate:**
 
@@ -194,66 +164,92 @@ This will:
 
 **Note:** If the browser doesn't open automatically (common on remote systems), copy the URL shown in the terminal and open it manually in a browser.
 
-### 2.4 Add Environment Tag to Project
+### 2.3 Add Environment Tag to Project
 
-**Google Cloud requires projects to have an 'environment' tag for proper resource management.**
+**Google Cloud requires projects to have an `environment` tag for proper resource management.**
 
-There are two ways to add an environment tag:
+**Using Google Cloud Console (Recommended)**
 
-**Option 1: Using Google Cloud Console (Recommended for First-Time Setup)**
+First, create the tag key and values:
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Navigate to **"IAM & Admin"** → **"Tags"**
+2. Navigate to **"IAM & Admin"** > **"Tags"** ([Open Tags page](https://console.cloud.google.com/iam-admin/tags))
 3. If the `environment` tag key doesn't exist:
-   - Click **"Create Tag Key"**
-   - Key name: `environment`
    - Click **"Create"**
-4. Select the `environment` tag key
-5. Click **"Manage tag values"** or **"Create Tag Value"**
-6. Enter value: `Development` (or `Test`, `Staging`, `Production`)
-7. Click **"Create"**
-8. Go to **"Manage resources"** and select your project
-9. Click **"Tags"** on the right panel
-10. Select the `environment` tag and value `Development`
-11. Click **"Update"**
+   - In the **Tag key** box, enter: `environment`
+   - Click **"Add value"** and enter: `Development`
+   - Optionally add more values: `Test`, `Staging`, `Production`
+   - Click **"Create tag key"**
 
-**Option 2: Using gcloud CLI (After Tag Key is Set Up)**
+Then, attach the tag to your project:
 
-Once the tag key exists, use the CLI:
+4. Navigate to **"Manage Resources"** ([Open Manage Resources](https://console.cloud.google.com/cloud-resource-manager))
+5. Click on your project
+6. Click **"Tags"**
+7. In the Tags panel, click **"Select scope"** and choose the organization or project containing your tags, then click **"Open"**
+8. Click **"Add tag"**
+9. In the **Key** field, select `environment`
+10. In the **Value** field, select `Development` (or your chosen environment)
+11. Click **"Save"**, then **"Confirm"** in the dialog
+
+> For full details on attaching tags, see the Google Cloud documentation:
+> [Attaching tags to resources](https://cloud.google.com/resource-manager/docs/tags/tags-creating-and-managing#attaching)
+
+**Tag Options:**
+- `Development` - Development/testing environments
+- `Test` - QA and testing environments
+- `Staging` - Pre-production staging
+- `Production` - Production environments
+
+**Verify the tag was applied:**
+
+You can verify in the Console by navigating to **Manage Resources** — the tag should appear under the **Tags** column for your project.
+
+Alternatively, use the gcloud CLI:
+
+```bash
+# List tag bindings on the project
+gcloud resource-manager tags bindings list \
+  --parent=//cloudresourcemanager.googleapis.com/projects/YOUR_PROJECT_ID
+```
+
+> For more on listing tags, see the Google Cloud documentation:
+> [Listing tags](https://cloud.google.com/resource-manager/docs/tags/tags-creating-and-managing#listing_tags)
+
+<details>
+<summary><b>Alternative: Using gcloud CLI</b> (requires tag key and value to exist first)</summary>
+
+If the tag key and values have already been created (e.g., via the Console steps above), you can attach a tag to your project using the CLI:
 
 ```bash
 # Set your project
 gcloud config set project YOUR_PROJECT_ID
 
-# List available tag keys
-gcloud resource-manager tags keys list
+# List available tag keys to find the tag key ID
+gcloud resource-manager tags keys list \
+  --parent=projects/YOUR_PROJECT_ID
 
-# List tag values for the 'environment' key
-gcloud resource-manager tags values list --parent=tagKeys/TAGKEY_ID
+# List tag values for the 'environment' key (use the tagKeys/TAGKEY_ID from above)
+gcloud resource-manager tags values list \
+  --parent=tagKeys/TAGKEY_ID
 
-# Bind tag value to project
+# Bind the tag value to your project (use the tagValues/TAGVALUE_ID from above)
 gcloud resource-manager tags bindings create \
-  --parent=projects/YOUR_PROJECT_ID \
-  --tag=environment/Development
+  --tag-value=tagValues/TAGVALUE_ID \
+  --parent=//cloudresourcemanager.googleapis.com/projects/YOUR_PROJECT_ID
 ```
 
-**Tag Options:**
-- `Development` - Development/testing environments
-- `Test` - QA and testing environments  
-- `Staging` - Pre-production staging
-- `Production` - Production environments
+> For the full CLI reference for attaching tags, see:
+> [Attaching tags to resources](https://cloud.google.com/resource-manager/docs/tags/tags-creating-and-managing#attaching)
 
-**Verify the tag was created:**
-```bash
-gcloud resource-manager tags bindings list --parent=projects/YOUR_PROJECT_ID
-```
+</details>
 
 **Common Issues:**
-- **Tag key doesn't exist** → Create it first via Google Cloud Console (Option 1)
-- **Permission denied** → Ensure your account has "Owner" or "Tag Admin" role
-- **Unrecognized arguments error** → Tag key may not be set up; use Console first (Option 1)
+- **Tag key doesn't exist** - Create it first via Google Cloud Console (steps 1-3 above)
+- **Permission denied** - Ensure your account has "Owner" or "Tag Admin" role
+- **Unrecognized arguments error** - Tag key may not be set up; use Console first
 
-### 2.5 Enable Required APIs
+### 2.4 Enable Required APIs
 
 ```bash
 # Ensure your project is set
@@ -272,7 +268,7 @@ gcloud services enable serviceusage.googleapis.com
 - **Error: "Project not found"** → Verify the project ID is correct
 - **Error: "Permission denied"** → Ensure your Google account has Owner or Editor role on the project
 
-### 2.6 Create Service Account
+### 2.5 Create Service Account
 
 ```bash
 # Create service account
@@ -282,7 +278,7 @@ gcloud iam service-accounts create call-processor-webhook \
 # Note the email (format: call-processor-webhook@PROJECT_ID.iam.gserviceaccount.com)
 ```
 
-### 2.7 Generate Service Account Key
+### 2.6 Generate Service Account Key
 
 ```bash
 # Generate key file
@@ -292,7 +288,7 @@ gcloud iam service-accounts keys create ./credentials/service-account-key.json \
 
 ⚠️ **Security Warning**: Keep this file secure! Never commit it to version control.
 
-### 2.8 Create and Share Google Drive Folder
+### 2.7 Create and Share Google Drive Folder
 
 1. Go to [Google Drive](https://drive.google.com)
 2. Create a folder: `Customer Call Recordings`
@@ -300,7 +296,7 @@ gcloud iam service-accounts keys create ./credentials/service-account-key.json \
 4. Grant "Editor" permission
 5. Note the folder ID from the URL: `drive.google.com/drive/folders/FOLDER_ID_HERE`
 
-### 2.9 Test Service Account Access
+### 2.8 Test Service Account Access
 
 ```bash
 python scripts/test_drive_access.py --folder-id YOUR_FOLDER_ID

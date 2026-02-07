@@ -129,9 +129,11 @@ cd customer-care-call-processor
    - **Option B:** Use gcloud CLI (requires tag key to exist first)
      ```bash
      gcloud resource-manager tags bindings create \
-       --parent=projects/customer-care-processor \
-       --tag=environment/Development
+       --tag-value=tagValues/TAGVALUE_ID \
+       --parent=//cloudresourcemanager.googleapis.com/projects/customer-care-processor
      ```
+     > See [Attaching tags to resources](https://cloud.google.com/resource-manager/docs/tags/tags-creating-and-managing#attaching) for the full command reference.
+     > See [Listing tags](https://cloud.google.com/resource-manager/docs/tags/tags-creating-and-managing#listing_tags) for how to find your tag key and value IDs.
 
 4. **Enable Google Drive API**:
    ```bash
