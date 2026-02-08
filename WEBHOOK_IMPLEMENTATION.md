@@ -152,12 +152,12 @@ aws --version  # Should show aws-cli/2.x.x
 
 **Configure AWS Credentials:**
 ```bash
-# Run configuration wizard
-aws configure
+# Use the deployer IAM user created by Terraform (see SETUP_GUIDE Section 3)
+aws configure --profile customer-care-dev
 
 # You'll be prompted for:
-# AWS Access Key ID: [Your access key]
-# AWS Secret Access Key: [Your secret key]
+# AWS Access Key ID: [Deployer access key]
+# AWS Secret Access Key: [Deployer secret key]
 # Default region name: us-east-1 (or your preferred region)
 # Default output format: json
 ```

@@ -98,6 +98,22 @@ output "sns_topic_arn" {
 }
 
 # -------------------------
+# IAM Deployer Credentials
+# -------------------------
+
+output "deployer_access_key_id" {
+  description = "Access key ID for the Terraform deployer IAM user"
+  value       = aws_iam_access_key.deployer.id
+  sensitive   = true
+}
+
+output "deployer_secret_access_key" {
+  description = "Secret access key for the Terraform deployer IAM user"
+  value       = aws_iam_access_key.deployer.secret
+  sensitive   = true
+}
+
+# -------------------------
 # Deployment Instructions
 # -------------------------
 

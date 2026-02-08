@@ -313,23 +313,53 @@ Expected output: `✓ Successfully accessed folder: Customer Call Recordings`
 
 ## 3. AWS Setup
 
-### 3.1 Configure AWS CLI
+### 3.1 Create Terraform Deployer User (Bootstrap)
+
+Use existing admin/root/SSO credentials to run a one-time Terraform bootstrap that creates a dedicated deployer IAM user and group with the required permissions.
+
+1. Add these variables to `terraform/terraform.tfvars`:
+  ```hcl
+  deployer_user_name  = "customer-care-deployer"
+  deployer_group_name = "customer-care-deployer-group"
+  ```
+
+2. Run the bootstrap apply (targets only the IAM deployer resources):
+  ```bash
+  cd terraform
+  terraform init
+  terraform apply \
+    -target=aws_iam_user.deployer \
+    -target=aws_iam_group.deployer \
+    -target=aws_iam_group_policy_attachment.deployer_policy \
+    -target=aws_iam_user_group_membership.deployer_membership \
+    -target=aws_iam_access_key.deployer
+  ```
+
+  **Policy coverage:** The deployer policy grants the permissions needed to provision and operate this stack (IAM, S3, DynamoDB, Lambda, API Gateway, Cognito, Step Functions, Secrets Manager, CloudWatch/Logs, SNS, X-Ray, Bedrock, Transcribe, Events, and resource tagging).
+
+3. Capture the access keys (store securely):
+  ```bash
+  terraform output -raw deployer_access_key_id
+  terraform output -raw deployer_secret_access_key
+  ```
+
+### 3.2 Configure AWS CLI
 
 ```bash
-aws configure
-# Enter your AWS Access Key ID
-# Enter your Secret Access Key
+aws configure --profile customer-care-dev
+# Enter the deployer user's AWS Access Key ID
+# Enter the deployer user's Secret Access Key
 # Default region: us-east-1
 # Default output format: json
 ```
 
-### 3.2 Verify AWS Access
+### 3.3 Verify AWS Access
 
 ```bash
-aws sts get-caller-identity
+aws sts get-caller-identity --profile customer-care-dev
 ```
 
-### 3.3 Enable Amazon Bedrock Model Access
+### 3.4 Enable Amazon Bedrock Model Access
 
 1. Go to [Amazon Bedrock Console](https://console.aws.amazon.com/bedrock)
 2. Navigate to "Model access" in the left sidebar
@@ -351,6 +381,10 @@ aws_region     = "us-east-1"
 environment    = "dev"
 s3_bucket_name = "customer-care-call-processor-dev"
 gdrive_folder_id = "YOUR_GOOGLE_DRIVE_FOLDER_ID"
+
+# Optional (IAM deployer user/group)
+deployer_user_name  = "customer-care-deployer"
+deployer_group_name = "customer-care-deployer-group"
 
 # Optional: Email for alerts
 alert_email = "your-email@example.com"

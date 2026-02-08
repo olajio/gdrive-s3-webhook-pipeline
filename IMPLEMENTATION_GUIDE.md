@@ -35,7 +35,7 @@ Your quick-start, end-to-end checklist to deploy the AI-powered call transcripti
 - Cognito, Secrets Manager, CloudWatch, SNS, IAM
 
 **Development Tools:**
-- AWS CLI v2 configured with appropriate credentials
+- AWS CLI v2 configured with the Terraform-created deployer IAM user
 - Python 3.11+
 - Terraform ≥ 1.0
 - Google Cloud SDK (gcloud CLI) - **Required for Google Cloud operations**

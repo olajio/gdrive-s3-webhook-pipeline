@@ -126,9 +126,9 @@ This document provides detailed validation steps to confirm successful completio
 #### AWS Account Configuration
 - [ ] AWS account accessible
 - [ ] Root user MFA enabled
-- [ ] IAM user created for development
-- [ ] IAM user has programmatic access (access key)
-- [ ] Access key downloaded and stored securely
+- [ ] IAM deployer group and user created via Terraform
+- [ ] Deployer policy attached with required permissions
+- [ ] Deployer access key generated and stored securely
 
 #### AWS CLI Configuration
 - [ ] AWS CLI configured with profile `customer-care-dev`

@@ -179,3 +179,69 @@ resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch" {
   role       = aws_iam_role.api_gateway_cloudwatch[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
 }
+
+# --------------------------------------------------
+# Deployer IAM User + Group (for AWS CLI/Terraform)
+# --------------------------------------------------
+
+resource "aws_iam_policy" "deployer_policy" {
+  name        = "${var.project_name}-deployer-policy-${var.environment}"
+  description = "Permissions for deploying and operating the customer-care-call-processor infrastructure"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:*",
+          "s3:*",
+          "dynamodb:*",
+          "lambda:*",
+          "apigateway:*",
+          "apigatewayv2:*",
+          "cognito-idp:*",
+          "logs:*",
+          "cloudwatch:*",
+          "sns:*",
+          "secretsmanager:*",
+          "states:*",
+          "events:*",
+          "xray:*",
+          "tag:*",
+          "resource-groups:*",
+          "bedrock:*",
+          "transcribe:*",
+          "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_group" "deployer" {
+  name = var.deployer_group_name
+  tags = var.tags
+}
+
+resource "aws_iam_user" "deployer" {
+  name = var.deployer_user_name
+  tags = var.tags
+}
+
+resource "aws_iam_group_policy_attachment" "deployer_policy" {
+  group      = aws_iam_group.deployer.name
+  policy_arn = aws_iam_policy.deployer_policy.arn
+}
+
+resource "aws_iam_user_group_membership" "deployer_membership" {
+  user   = aws_iam_user.deployer.name
+  groups = [aws_iam_group.deployer.name]
+}
+
+resource "aws_iam_access_key" "deployer" {
+  user = aws_iam_user.deployer.name
+}

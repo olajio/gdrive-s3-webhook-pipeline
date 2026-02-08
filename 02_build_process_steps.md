@@ -397,23 +397,36 @@ gcloud --version  # Should show Google Cloud SDK version
    - Sign up at [aws.amazon.com](https://aws.amazon.com)
    - Set up root user MFA (required)
 
-2. Create IAM user for development:
-   - Navigate to IAM → Users → Add User
-   - Username: `customer-care-developer`
-   - Access type: Programmatic access
-   - Permissions: AdministratorAccess (or create custom policy)
-   - Download access key CSV
+2. Bootstrap IAM deployer user and group with Terraform (use existing admin/root/SSO credentials for this one-time step):
+   ```bash
+   cd terraform
+   terraform init
+   terraform apply \
+     -target=aws_iam_user.deployer \
+     -target=aws_iam_group.deployer \
+     -target=aws_iam_group_policy_attachment.deployer_policy \
+     -target=aws_iam_user_group_membership.deployer_membership \
+     -target=aws_iam_access_key.deployer
+   ```
 
-3. Configure AWS CLI:
+   **Policy coverage:** IAM, S3, DynamoDB, Lambda, API Gateway, Cognito, Step Functions, Secrets Manager, CloudWatch/Logs, SNS, X-Ray, Bedrock, Transcribe, Events, and tagging.
+
+3. Capture the deployer access keys (store securely):
+   ```bash
+   terraform output -raw deployer_access_key_id
+   terraform output -raw deployer_secret_access_key
+   ```
+
+4. Configure AWS CLI:
    ```bash
    aws configure --profile customer-care-dev
-   # AWS Access Key ID: [Your access key]
-   # AWS Secret Access Key: [Your secret key]
+   # AWS Access Key ID: [Deployer access key]
+   # AWS Secret Access Key: [Deployer secret key]
    # Default region: us-east-1
    # Default output format: json
    ```
 
-4. Set environment variable:
+5. Set environment variable:
    ```bash
    export AWS_PROFILE=customer-care-dev
    # Add to ~/.bashrc or ~/.zshrc for persistence

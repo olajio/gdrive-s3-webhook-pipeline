@@ -25,6 +25,22 @@ variable "project_name" {
 }
 
 # -------------------------
+# IAM Deployer Configuration
+# -------------------------
+
+variable "deployer_user_name" {
+  description = "IAM user name for Terraform deployments"
+  type        = string
+  default     = "customer-care-deployer"
+}
+
+variable "deployer_group_name" {
+  description = "IAM group name for Terraform deployments"
+  type        = string
+  default     = "customer-care-deployer-group"
+}
+
+# -------------------------
 # S3 Configuration
 # -------------------------
 
